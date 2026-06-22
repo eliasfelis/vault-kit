@@ -69,11 +69,24 @@ Check exit code:
   - Force release → run `lock.ps1 -Action force-release`, then re-acquire (`lock.ps1 -Action acquire`).
   - Abort → exit.
 
-### Step 5: Sequential foreground dispatch
+### Step 5: Dispatch announce
+
+Emit this **before** the Step 6 dispatch:
+
+```
+/vault-audit running (sequential foreground)
+- Junker → junker/{TS}  (mode: {junker_mode})
+- Builder → builder/{TS}  (mode: {builder_mode})
+
+Agents run in isolated worktrees, one at a time (Junker → Builder). Main branch is untouched.
+Session is busy for the duration of the run (~10–20 min) — this is foreground, not background.
+```
+
+If `--junker-only` or `--builder-only`, list only the dispatched agent.
+
+### Step 6: Sequential foreground dispatch
 
 **Sequential foreground is required** — Junker first, then Builder, each run in the foreground one at a time. NOT parallel, NOT `run_in_background`. Rationale: parallel background dispatch has caused worktree isolation failures and main-branch drift. Foreground-sequential keeps the orchestrator holding the session so a PWD-guard can catch any agent that strays onto the main branch. Parallel/background dispatch requires an explicit separate decision and an edit to this step.
-
-Emit the Step 6 announce BEFORE dispatching (so the user knows the run has started and the session is busy), then dispatch.
 
 Decide which agents to dispatch based on flags:
 - Default / `--dry-run`: dispatch both.
@@ -129,7 +142,7 @@ PWD-GUARD (mandatory): you run in an isolated git worktree. Before ANY git write
 
 Dispatch via the Agent tool **sequentially, in the foreground** — one Agent call per message, await each result before dispatching the next.
 
-**Step 5a — dispatch Junker** (skip if `--builder-only`), await its structured JSON:
+**Step 6a — dispatch Junker** (skip if `--builder-only`), await its structured JSON:
 
 ```
 Agent(
@@ -141,7 +154,7 @@ Agent(
 )
 ```
 
-**Step 5b — after Junker returns, dispatch Builder** (skip if `--junker-only`), await its structured JSON:
+**Step 6b — after Junker returns, dispatch Builder** (skip if `--junker-only`), await its structured JSON:
 
 ```
 Agent(
@@ -155,24 +168,9 @@ Agent(
 
 Foreground dispatch means each Agent call blocks until the agent finishes and returns its JSON inline — there is no background notification to wait for.
 
-### Step 6: Dispatch announce
-
-Emit this **before** the Step 5 dispatch:
-
-```
-/vault-audit running (sequential foreground)
-- Junker → junker/{TS}  (mode: {junker_mode})
-- Builder → builder/{TS}  (mode: {builder_mode})
-
-Agents run in isolated worktrees, one at a time (Junker → Builder). Main branch is untouched.
-Session is busy for the duration of the run (~10–20 min) — this is foreground, not background.
-```
-
-If `--junker-only` or `--builder-only`, list only the dispatched agent.
-
 ### Step 7: Collect results (inline)
 
-Foreground dispatch means each Agent call returns its structured JSON inline the moment that agent finishes — there is no background run, no harness notification, no polling. Collect Junker's JSON when its call returns, then (after dispatching Builder in Step 5b) collect Builder's JSON the same way. Proceed to Step 8 once all dispatched agents have returned.
+Foreground dispatch means each Agent call returns its structured JSON inline the moment that agent finishes — there is no background run, no harness notification, no polling. Collect Junker's JSON when its call returns, then (after dispatching Builder in Step 6b) collect Builder's JSON the same way. Proceed to Step 8 once all dispatched agents have returned.
 
 ### Step 8: Parse results
 
@@ -322,7 +320,7 @@ Surface every deletion (and every skip/failure) in the run summary — fail-soft
 
 - Current branch must be `main` (else error and exit).
 - `${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1` + `${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1` must be available.
-- Plugin agents `vault-audit:junker` and `vault-audit:builder` must be registered (verify with `/agents` after install — see `TODO-VERIFY` comments in Step 5).
+- Plugin agents `vault-audit:junker` and `vault-audit:builder` must be registered (verify with `/agents` after install — see `TODO-VERIFY` comments in Step 6).
 - A rules pack `rules.yaml` (or `rules.example.yaml` fallback) must be readable.
 
 ## Failure handling
