@@ -102,9 +102,7 @@ For each remaining file under `VAULT_ROOT` (apply to `*.md`; the pattern itself 
 
 Skip entirely if the block is absent or `enabled: false`.
 
-- Identify the project-like subfolders of `VAULT_ROOT` (the immediate child directories that hold per-project work, e.g. `projects/<name>/`). Group files by **basename** across those subfolders.
-- If the same basename appears in 2+ such subfolders → finding (suggests a routing error / duplicate).
-- **Exempt basenames:** any basename in `cfg.duplicates.exempt_basenames` is expected to recur once per project folder by design — NEVER report it. (Governance paths are also excluded.)
+- **Detect:** glob ALL `*.md` files under `VAULT_ROOT`. Take each file's basename and group files by basename. Flag any basename that appears in **2 or more different directories** as a duplicate finding (list all paths sharing it). EXCLUDE from this check: any basename in `cfg.duplicates.exempt_basenames`; any file under a `cfg.governance_paths` entry; and any file under a `cfg.naming.exempt_paths` entry. This is a whole-vault basename-collision check — it requires no notion of "project folders".
 
 **Autofix policy (D):** None — all duplicates are `requires_decision` (which to rename or merge is a human call).
 
