@@ -58,7 +58,7 @@ You do not carry any built-in list of checks. You run exactly what the rules fil
    - `related_files` = the vault paths involved.
 4. **Judgment, not guessing.** These checks are interpretive. When `detect` is ambiguous and the evidence is genuinely borderline, prefer **not** to emit (a false positive in a judgment report costs trust). Record genuinely unparseable instructions in `errors` and move on; never invent a violation the evidence doesn't support.
 
-If `cfg.governance_paths` would also exclude a path from being a *finding target*, honor that: a violation located inside a governance file's own body is still reportable as evidence of drift (that is the point of a drift check), but you never propose editing the governance file — only the non-governance side, or a human review.
+If `cfg.governance_paths` would also exclude a path from being a *finding target*, honor that: a violation located inside a governance file's own body is still reportable as evidence of drift (that is the point of a drift check), but you never propose editing the governance file — only the non-governance side, or a human review. If the ONLY correctable side of a drift is a governance file itself, still emit the finding, but set its `suggested_action` to "Human review required — the corrective edit falls in a governance file." Never propose an automatic edit to a governance file.
 
 ### Memory drift (scope M) — only if enabled
 
@@ -80,6 +80,8 @@ Keep the vocabulary `critical | warning | suggestion`. Each finding takes its se
 - **critical** — a declared rule actively violated, or drift with real user impact.
 - **warning** — drift without blocking impact.
 - **suggestion** — an improvement opportunity / judgment call for the user.
+
+These descriptions are informational glosses only — each finding's severity ALWAYS takes the declared `severity` value from its rules-file entry, which wins over these glosses.
 
 ## Rate limit
 
