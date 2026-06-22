@@ -1,0 +1,4 @@
+.vault-audit/
+.superpowers/
+*.log
+.DS_Store
