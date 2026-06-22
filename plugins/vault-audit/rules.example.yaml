@@ -1,0 +1,57 @@
+# vault-audit rules pack. Copy to `rules.yaml`, edit to match YOUR vault.
+# Omit any block to skip that check entirely.
+# Files matched by `governance_paths` are NEVER modified AND are skipped by
+# every detection below (you don't lint your own constitution).
+
+vault:
+  root: "."                       # path to the vault to audit (default: cwd)
+  timezone_offset_hours: 0        # used only for report timestamps
+
+governance_paths:                 # never modified; skipped by all checks
+  - "CLAUDE.md"
+  - "docs/"
+  - "rules/"
+  - "templates/"
+
+broken_refs:
+  enabled: true
+  check_markdown_links: true      # relative [text](path.md) targets must exist
+  check_frontmatter_field: "spec" # a frontmatter field holding a path to validate; "" to skip
+
+frontmatter:
+  enabled: true
+  required_fields: ["tags", "date"]
+  tag_count: { min: 3, max: 8 }
+  tag_namespaces: ["type", "project", "topic", "status"]  # [] = allow any
+  allowed_values:                 # optional closed enums per namespace
+    project: ["alpha", "beta"]
+  exempt_paths:                   # files here skip the frontmatter check
+    - "archive/"
+    - "templates/"
+
+naming:
+  enabled: true
+  pattern: '^.+ \d{4}-\d{2}-\d{2}\.md$'  # regex filenames must match; "" to skip
+  exempt_paths:
+    - "archive/"
+    - "templates/"
+    - "docs/"
+  exempt_basenames: ["STATE.md", "index.md", "README.md"]  # structural files, no dated name
+
+duplicates:
+  enabled: true
+  exempt_basenames: ["STATE.md", "index.md", "README.md"]
+
+staleness:
+  enabled: true
+  rules:
+    - { glob: "inbox/*.md", max_age_days: 7, frontmatter_field: "date" }
+    - { glob: "projects/*/STATE.md", max_age_days: 14, frontmatter_field: "date" }
+
+memory:                           # optional — OFF by default
+  enabled: false
+  path: ""                        # absolute path to a Claude-Code memory folder
+  index_file: "MEMORY.md"
+
+report:
+  dir: ".vault-audit"             # where the Builder writes its standalone report

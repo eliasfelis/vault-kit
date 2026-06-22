@@ -1,0 +1,33 @@
+vault:
+  root: "."
+  timezone_offset_hours: 0
+governance_paths:
+  - "CLAUDE.md"
+broken_refs:
+  enabled: true
+  check_markdown_links: true
+  check_frontmatter_field: ""
+frontmatter:
+  enabled: true
+  required_fields: ["tags", "date"]
+  tag_count: { min: 3, max: 8 }
+  tag_namespaces: ["type", "project", "topic", "status"]
+  allowed_values:
+    project: ["alpha", "beta"]
+  exempt_paths: []
+naming:
+  enabled: true
+  pattern: '^.+ \d{4}-\d{2}-\d{2}\.md$'
+  exempt_paths: []
+  exempt_basenames: ["STATE.md", "index.md"]
+duplicates:
+  enabled: true
+  exempt_basenames: ["STATE.md", "index.md"]
+staleness:
+  enabled: true
+  rules:
+    - { glob: "inbox/*.md", max_age_days: 7, frontmatter_field: "date" }
+memory:
+  enabled: false
+report:
+  dir: ".vault-audit"
