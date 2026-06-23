@@ -34,7 +34,7 @@ Out of the box the auditor ships with an **opinionated, de-identified starter ru
 
 ### Requirements
 
-Windows + PowerShell 5.1 — the lock/preflight/leak-audit helpers are PowerShell. A cross-platform port is a future item.
+Runs on **Windows (via Git Bash), macOS, and Linux**. Needs `bash`, `git`, and `perl` — all bundled with Git for Windows, preinstalled on macOS/Linux. No PowerShell required.
 
 ---
 

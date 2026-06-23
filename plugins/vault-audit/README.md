@@ -72,6 +72,6 @@ Neither agent touches your main branch.
 
 ---
 
-## Windows-only (for now)
+## Platforms
 
-The lock/preflight/leak-audit helpers are PowerShell scripts. Requires Windows + PowerShell 5.1. A cross-platform port is a future item.
+Runs on **Windows (via Git Bash), macOS, and Linux**. The helper scripts are `bash` + `perl` (both bundled with Git for Windows; preinstalled on macOS/Linux). No PowerShell required.
