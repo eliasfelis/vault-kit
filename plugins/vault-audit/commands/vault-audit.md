@@ -26,7 +26,7 @@ Extract flag set from user invocation. Validate:
 
 ### Step 2: Compute `{TS}`
 
-Load and parse the rules pack — locate `rules.yaml` beside the plugin (`${CLAUDE_PLUGIN_ROOT}/rules.yaml`), falling back to `${CLAUDE_PLUGIN_ROOT}/rules.example.yaml` if absent — and store the parsed object as `cfg` **once here**; all later `cfg.*` references (timezone, `cfg.report.dir`, `cfg.vault.root`, etc.) read from this object.
+Load and parse the rules pack — locate `rules.yaml` beside the plugin (`${CLAUDE_PLUGIN_ROOT}/rules.yaml`), falling back to `${CLAUDE_PLUGIN_ROOT}/rules.starter.yaml` (the opinionated, proven starter conventions) if absent, then falling back to `${CLAUDE_PLUGIN_ROOT}/rules.example.yaml` (the bare schema reference) as the final resort — and store the parsed object as `cfg` **once here**; all later `cfg.*` references (timezone, `cfg.report.dir`, `cfg.vault.root`, etc.) read from this object.
 
 Read current UTC time, apply `cfg.vault.timezone_offset_hours` (default `0` = UTC), format as `YYYY-MM-DD-HHMM`. Example: `2026-05-18-1430`.
 
@@ -104,8 +104,8 @@ Derive `builder_mode`:
 - else → `vault-only`
 
 Locate the rules pack files:
-- `rules_path` = path to `rules.yaml` beside the plugin (one level up from this file, e.g. `${CLAUDE_PLUGIN_ROOT}/rules.yaml`). If not customized, fall back to `${CLAUDE_PLUGIN_ROOT}/rules.example.yaml`.
-- `rules_md_path` = path to the judgment-checks markdown file, e.g. `${CLAUDE_PLUGIN_ROOT}/rules.md` (fall back to `${CLAUDE_PLUGIN_ROOT}/rules.example.md`).
+- `rules_path` = path to `rules.yaml` beside the plugin (one level up from this file, e.g. `${CLAUDE_PLUGIN_ROOT}/rules.yaml`). If not customized, fall back to `${CLAUDE_PLUGIN_ROOT}/rules.starter.yaml`; if that is also absent, fall back to `${CLAUDE_PLUGIN_ROOT}/rules.example.yaml`.
+- `rules_md_path` = path to the judgment-checks markdown file, e.g. `${CLAUDE_PLUGIN_ROOT}/rules.md` (fall back to `${CLAUDE_PLUGIN_ROOT}/rules.starter.md`; if absent, fall back to `${CLAUDE_PLUGIN_ROOT}/rules.example.md`).
 
 Construct prompts:
 

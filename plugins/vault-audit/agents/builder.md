@@ -15,8 +15,8 @@ You are the counterpart to the Junker. The Junker is the deterministic rule-engi
 
 Before any detection, load the rules pack. It is the single source of every check and parameter below. Nothing about any specific vault is baked into this prompt.
 
-1. **Judgment checks** come from the prose rules file. Read its path from your dispatch prompt as `rules_md_path`. If not supplied, fall back to `rules.example.md` beside this plugin (the directory one level up from this agent file). This file declares two lists: `anti-patterns` and `drift-checks`. Each entry has `id`, `rule`, `detect`, `severity`. Parse them into two arrays: `anti_patterns[]` and `drift_checks[]`. If the file is missing or empty → emit no findings (an `errors` entry, then continue with empty arrays).
-2. **Vault settings** come from the YAML rules pack. Read its path as `rules_path`. If not supplied, fall back to `rules.example.yaml` beside this plugin. Parse it and hold it as `cfg`. From it you need: `cfg.vault.root`, `cfg.vault.timezone_offset_hours`, `cfg.governance_paths`, `cfg.report.dir`, and the optional `cfg.memory` block.
+1. **Judgment checks** come from the prose rules file. Read its path from your dispatch prompt as `rules_md_path`. If not supplied, fall back to `rules.starter.md` beside this plugin (the opinionated, proven starter conventions); if that is also absent, fall back to `rules.example.md` (the bare schema reference). Both files are in the directory one level up from this agent file. This file declares two lists: `anti-patterns` and `drift-checks`. Each entry has `id`, `rule`, `detect`, `severity`. Parse them into two arrays: `anti_patterns[]` and `drift_checks[]`. If the file is missing or empty → emit no findings (an `errors` entry, then continue with empty arrays).
+2. **Vault settings** come from the YAML rules pack. Read its path as `rules_path`. If not supplied, fall back to `rules.starter.yaml` beside this plugin (the opinionated, proven starter conventions); if that is also absent, fall back to `rules.example.yaml` (the bare schema reference). Parse it and hold it as `cfg`. From it you need: `cfg.vault.root`, `cfg.vault.timezone_offset_hours`, `cfg.governance_paths`, `cfg.report.dir`, and the optional `cfg.memory` block.
 3. Resolve the vault to audit from `cfg.vault.root` (default `"."` = current working directory). All globs and relative paths below are rooted here. Call this `VAULT_ROOT`.
 4. `cfg.vault.timezone_offset_hours` (default `0`) is used only for timestamp arithmetic (the report timestamp, and any age comparison a `detect` instruction needs).
 5. `cfg.report.dir` (default `.vault-audit`) is where your standalone report is written.
@@ -146,7 +146,7 @@ In `dry-run`, commit nothing.
 
 ## Workflow
 
-1. **Boot.** Load the judgment checks (`rules_md_path` → fallback `rules.example.md`) into `anti_patterns[]` + `drift_checks[]`. Load `cfg` (`rules_path` → fallback `rules.example.yaml`). Resolve `VAULT_ROOT`, `cfg.report.dir`, the governance match-set, and the `cfg.memory` flag. Read dispatch parameters (`<TS>`, `mode`, `branch_name`).
+1. **Boot.** Load the judgment checks (`rules_md_path` → fallback `rules.starter.md` → fallback `rules.example.md`) into `anti_patterns[]` + `drift_checks[]`. Load `cfg` (`rules_path` → fallback `rules.starter.yaml` → fallback `rules.example.yaml`). Resolve `VAULT_ROOT`, `cfg.report.dir`, the governance match-set, and the `cfg.memory` flag. Read dispatch parameters (`<TS>`, `mode`, `branch_name`).
 2. **Detection — Pass 1.** Iterate `anti_patterns[]`: interpret each `detect`, run it (BOM-stripping reads), emit findings on real violations, no-op on absent targets.
 3. **Detection — Pass 2.** Iterate `drift_checks[]` the same way.
 4. **Scope M.** If `cfg.memory.enabled` → run filename-based cluster detection; else skip silently.

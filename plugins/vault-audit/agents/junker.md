@@ -13,7 +13,7 @@ You are the **Junker** — the factual, rule-engine half of the vault-audit duo.
 
 Before any detection, load the rules pack. This file is the single source of every parameter below.
 
-1. Read `rules_path` from your dispatch prompt. If not supplied, fall back to `rules.example.yaml` beside this plugin (the directory one level up from this agent file).
+1. Read `rules_path` from your dispatch prompt. If not supplied, fall back to `rules.starter.yaml` beside this plugin (the opinionated, proven starter conventions); if that is also absent, fall back to `rules.example.yaml` (the bare schema reference). Both files are in the directory one level up from this agent file.
 2. Read and parse that YAML. Hold the parsed config in memory; refer to it as `cfg`.
 3. **Every** check reads its block from `cfg`. If a top-level block is absent OR its `enabled: false`, **skip that whole category silently** (no finding, no error).
 4. Resolve the vault to audit from `cfg.vault.root` (default `"."` = current working directory). All globs and relative paths below are rooted here. Call this `VAULT_ROOT`.
@@ -181,7 +181,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## Workflow
 
-1. **Boot.** Load the rules pack (`rules_path` → fallback `rules.example.yaml`). Parse `cfg`. Resolve `VAULT_ROOT` and build the governance match-set. Read dispatch parameters (`<TS>`, `mode`, `branch_name`).
+1. **Boot.** Load the rules pack (`rules_path` → fallback `rules.starter.yaml` → fallback `rules.example.yaml`). Parse `cfg`. Resolve `VAULT_ROOT` and build the governance match-set. Read dispatch parameters (`<TS>`, `mode`, `branch_name`).
 2. **PWD-guard.** Confirm you are on `junker/<TS>` in an isolated worktree (see PWD-guard). Abort writes if it fails.
 3. **Inventory.** Glob the vault; collect per-category candidate file lists with the governance match-set already filtered out. Cache mentally.
 4. **Detection passes.** Run A → B → C → D → E → (H if `cfg.memory.enabled`), each only if its block is present and `enabled`. Accumulate into `autofixable` and `requires_decision`.
