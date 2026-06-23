@@ -25,19 +25,26 @@ case "$action" in
   acquire)
     if [ -f "$lock_file" ]; then
       read -r owner_pid lock_epoch < "$lock_file" || true
+      # Harden against a corrupt/partial lockfile: a non-numeric field must not
+      # crash arithmetic under set -u. Coerce a bad pid to "" (treated as dead)
+      # and a bad epoch to 0 (treated as ancient) so a corrupt lock is reclaimed,
+      # never wedged forever.
+      case "${owner_pid:-}" in ''|*[!0-9]*) owner_pid="" ;; esac
+      case "${lock_epoch:-}" in ''|*[!0-9]*) lock_epoch=0 ;; esac
       now_epoch="$(date -u +%s)"
-      age_sec=$(( now_epoch - ${lock_epoch:-0} ))
+      age_sec=$(( now_epoch - lock_epoch ))
       max_age_sec=$(( max_age_min * 60 ))
       alive=false
-      if [ -n "${owner_pid:-}" ] && kill -0 "$owner_pid" 2>/dev/null; then
+      if [ -n "$owner_pid" ] && kill -0 "$owner_pid" 2>/dev/null; then
         alive=true
       fi
       # Busy iff owning PID alive OR lock younger than max-age (guards rapid sequential calls).
       if [ "$alive" = true ] || [ "$age_sec" -le "$max_age_sec" ]; then
-        echo "Lock busy: PID ${owner_pid:-?}, age $(( age_sec / 60 )) min"
+        disp_age=$(( age_sec / 60 )); [ "$disp_age" -lt 0 ] && disp_age=0
+        echo "Lock busy: PID ${owner_pid:-?}, age ${disp_age} min"
         exit 1
       fi
-      # else: stale (PID gone AND older than max-age) -> reclaim
+      # else: stale (PID gone/garbage AND older than max-age) -> reclaim
     fi
     printf '%s %s\n' "$$" "$(date -u +%s)" > "$lock_file"
     echo "Lock acquired by PID $$"

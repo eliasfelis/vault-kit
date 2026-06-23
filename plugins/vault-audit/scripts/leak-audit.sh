@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # leak-audit.sh - publish gate: fail if any scanned file matches a forbidden pattern.
 # Usage: leak-audit.sh --path P [--pattern-file F] [--extra-patterns X] [--exclude REGEX]
-# exit 0 clean / 1 leak(s) found / 2 a named pattern file is missing.
+# exit 0 clean / 1 leak(s) found / 2 a named pattern file is missing or holds an invalid regex.
 # Scanner is perl (PCRE) so the existing .NET-style patterns (\b, \d, (?:...)) work unchanged.
 set -uo pipefail
 
@@ -22,6 +22,8 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$path" ]; then echo "ERROR: --path is required" >&2; exit 64; fi
+# A non-existent path must NOT report clean — that would give a security gate false assurance.
+if [ ! -e "$path" ]; then echo "ERROR: path not found: $path" >&2; exit 64; fi
 if [ ! -f "$pattern_file" ]; then echo "Pattern file not found: $pattern_file" >&2; exit 2; fi
 
 combined="$(mktemp)"
@@ -37,14 +39,39 @@ fi
 
 if [ ! -s "$combined" ]; then echo "OK: no patterns loaded - nothing to check"; exit 0; fi
 
+# Validate every pattern compiles as a perl regex. A broken pattern fails the gate
+# LOUD and deterministically (exit 2) — never a silent skip or an undefined exit 255.
+if ! perl -e '
+  my $pf = shift;
+  open(my $ph, "<", $pf) or die "patterns: $!";
+  my $bad = 0;
+  while (my $p = <$ph>) {
+    $p =~ s/\r?\n$//; next unless length $p;
+    eval { qr/$p/ };
+    if ($@) { (my $m = $@) =~ s/\n.*//s; print STDERR "Invalid pattern: $p  ($m)\n"; $bad = 1; }
+  }
+  exit($bad ? 1 : 0);
+' "$combined"; then
+  echo "ERROR: invalid regex in pattern set (see above)" >&2
+  exit 2
+fi
+
 # Build file list: single file as-is, else enumerate by extension and apply --exclude.
-if [ -f "$path" ]; then
-  printf '%s\n' "$path" > "$filelist"
-else
-  find "$path" -type f \( \
+# An EMPTY --exclude must NOT drop every file (grep -vE '' matches all → false-clean);
+# only filter when a non-empty exclude regex is supplied.
+enumerate() {
+  find "$1" -type f \( \
       -name '*.md' -o -name '*.json' -o -name '*.yaml' -o -name '*.yml' \
       -o -name '*.ps1' -o -name '*.txt' -o -name '*.js' -o -name '*.ts' -o -name '*.sh' \
-    \) 2>/dev/null | grep -vE "$exclude" > "$filelist" || true
+    \) 2>/dev/null
+}
+
+if [ -f "$path" ]; then
+  printf '%s\n' "$path" > "$filelist"
+elif [ -n "$exclude" ]; then
+  enumerate "$path" | grep -vE "$exclude" > "$filelist" || true
+else
+  enumerate "$path" > "$filelist" || true
 fi
 
 # Scan with perl (PCRE).

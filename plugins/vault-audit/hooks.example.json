@@ -3,11 +3,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "_comment": "Copy `behavior-layer.example.md` into your own vault as `behavior-layer.md` (e.g. at your project root) and point this command at it. `${CLAUDE_PROJECT_DIR}` resolves to your project root at runtime. On Windows, emit no-BOM UTF-8 so non-ASCII echoes safely (a leading BOM can corrupt the first injected line).",
+        "_comment": "Copy `behavior-layer.example.md` into your own vault as `behavior-layer.md` (e.g. at your project root) and point this command at it. `${CLAUDE_PROJECT_DIR}` resolves to your project root at runtime. `cat` runs on macOS/Linux natively and on Windows via Git Bash (already required by this tool). If your file has a UTF-8 BOM, strip it once so the first injected line isn't corrupted.",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); Get-Content -Raw -Encoding utf8 '${CLAUDE_PROJECT_DIR}/behavior-layer.md'\""
+            "command": "cat \"${CLAUDE_PROJECT_DIR}/behavior-layer.md\""
           }
         ]
       }
