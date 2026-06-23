@@ -1,0 +1,60 @@
+# vault-audit - opinionated starter rules pack.
+# De-identified, proven defaults from a real working vault. Use as-is, or copy to
+# `rules.yaml` and adjust. (For a bare minimal schema instead, see rules.example.yaml.)
+
+vault:
+  root: "."
+  timezone_offset_hours: 0
+
+governance_paths:             # never modified; skipped by all checks
+  - "CLAUDE.md"
+  - "docs/"
+  - "rules/"
+  - "templates/"
+
+broken_refs:
+  enabled: true
+  check_markdown_links: true
+  check_frontmatter_field: "spec"   # "" to skip
+
+frontmatter:
+  enabled: true
+  required_fields: ["tags", "date"]
+  tag_count: { min: 3, max: 8 }
+  # Identity + classification namespaces. Domain extensions (geo/, stage/, role/, ...)
+  # are EXAMPLES from one vault - replace this list with your own taxonomy.
+  tag_namespaces: ["type", "project", "topic", "status"]
+  allowed_values: {}          # add closed enums per namespace to enforce them
+  exempt_paths:
+    - "archive/"
+    - "templates/"
+
+naming:
+  enabled: true
+  # A dated convention: "<project> <type> <description> - YYYY-MM-DD.md".
+  # (The source vault uses an EN-DASH before the date; a plain hyphen is shown here
+  #  for portability - use whichever you prefer.)
+  pattern: '^.+ - \d{4}-\d{2}-\d{2}\.md$'
+  exempt_paths:
+    - "archive/"
+    - "templates/"
+    - "docs/"
+  exempt_basenames: ["STATE.md", "index.md", "README.md"]
+
+duplicates:
+  enabled: true
+  exempt_basenames: ["STATE.md", "index.md", "README.md"]
+
+staleness:
+  enabled: true
+  rules:
+    - { glob: "inbox/*.md", max_age_days: 7, frontmatter_field: "date" }
+    - { glob: "projects/*/STATE.md", max_age_days: 14, frontmatter_field: "date" }
+
+memory:
+  enabled: false
+  path: ""
+  index_file: "MEMORY.md"
+
+report:
+  dir: ".vault-audit"
