@@ -27,7 +27,11 @@ function Load-Patterns {
 $patterns = [System.Collections.Generic.List[string]]::new()
 foreach ($p in (Load-Patterns $PatternFile)) { $patterns.Add($p) }
 
-if ($ExtraPatterns -ne "" -and (Test-Path $ExtraPatterns)) {
+if ($ExtraPatterns -ne "") {
+    if (-not (Test-Path $ExtraPatterns)) {
+        [Console]::Error.WriteLine("ExtraPatterns file not found: $ExtraPatterns")
+        exit 2
+    }
     foreach ($p in (Load-Patterns $ExtraPatterns)) { $patterns.Add($p) }
 }
 
