@@ -24,7 +24,7 @@ done
 case "$max_age_min" in ''|*[!0-9]*) echo "ERROR: --max-age-min must be a non-negative integer" >&2; exit 64 ;; esac
 
 lock_file="$lock_dir/.running"
-mkdir -p "$lock_dir"
+mkdir -p "$lock_dir" || { echo "ERROR: cannot create lock dir: $lock_dir" >&2; exit 64; }
 
 case "$action" in
   acquire)

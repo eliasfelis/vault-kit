@@ -10,5 +10,5 @@ ghp_[0-9A-Za-z]{20,}
 github_pat_[0-9A-Za-z_]{20,}
 AKIA[0-9A-Z]{16}
 xox[baprs]-[0-9A-Za-z-]{10,}
-sk-[0-9A-Za-z]{20,}
+sk-(proj|svcacct|admin)?-?[0-9A-Za-z_-]{20,}
 -----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----

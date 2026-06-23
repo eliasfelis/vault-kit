@@ -37,7 +37,8 @@ if [ -n "$extra_patterns" ]; then
   grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$extra_patterns" >> "$combined" || true
 fi
 
-if [ ! -s "$combined" ]; then echo "OK: no patterns loaded - nothing to check"; exit 0; fi
+# A publish gate that loaded zero patterns must NOT certify clean (it checked nothing).
+if [ ! -s "$combined" ]; then echo "ERROR: no patterns loaded - refusing to certify (empty pattern set)" >&2; exit 2; fi
 
 # Validate every pattern compiles as a perl regex. A broken pattern fails the gate LOUD and
 # deterministically (exit 2) — never a silent skip or an undefined exit 255. Patterns are
@@ -68,16 +69,32 @@ enumerate() {
       -o -iname '*.env' -o -iname '*.pem' -o -iname '*.key' -o -iname '*.cfg' \
       -o -iname '*.conf' -o -iname '*.ini' -o -iname '*.toml' -o -iname '*.xml' \
       -o -iname '*.html' -o -iname '*.py' -o -iname '*.rb' -o -iname '*.go' \
-      -o -iname '*.java' -o -iname '*.csv' \
+      -o -iname '*.java' -o -iname '*.csv' -o -iname '*.properties' -o -iname '*.tfvars' \
+      -o -iname 'Dockerfile*' -o -iname 'Makefile' -o -iname 'LICENSE*' \
+      -o -iname '.npmrc' -o -iname '.netrc' -o -iname '.dockercfg' -o -iname '.git-credentials' \
+      -o -iname '.gitignore' -o -iname '.gitattributes' \
     \) 2>/dev/null
 }
 
 if [ -f "$path" ]; then
   printf '%s\n' "$path" > "$filelist"
-elif [ -n "$exclude" ]; then
-  enumerate "$path" | grep -vE "$exclude" > "$filelist" || true
 else
-  enumerate "$path" > "$filelist" || true
+  allfiles="$(mktemp)"
+  enumerate "$path" > "$allfiles" || true
+  total=$(wc -l < "$allfiles" | tr -d '[:space:]')
+  if [ -n "$exclude" ]; then
+    grep -vE "$exclude" "$allfiles" > "$filelist" || true
+  else
+    cp "$allfiles" "$filelist"
+  fi
+  kept=$(wc -l < "$filelist" | tr -d '[:space:]')
+  rm -f "$allfiles"
+  # An over-broad --exclude that drops every enumerated file would scan nothing and
+  # falsely certify clean. A publish gate must never report clean having scanned 0 of N.
+  if [ "${total:-0}" -gt 0 ] && [ "${kept:-0}" -eq 0 ]; then
+    echo "ERROR: --exclude matched all $total enumerated files - nothing scanned, refusing to certify" >&2
+    exit 2
+  fi
 fi
 
 # Scan with perl (PCRE). An enumerated-but-unreadable file is surfaced as FAILED and fails the
