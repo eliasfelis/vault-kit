@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # leak-audit.sh - publish gate: fail if any scanned file matches a forbidden pattern.
 # Usage: leak-audit.sh --path P [--pattern-file F] [--extra-patterns X] [--exclude REGEX]
-# exit 0 clean / 1 leak(s) found / 2 a named pattern file is missing or holds an invalid regex.
+# exit 0 clean / 1 leak(s) or unreadable file(s) / 2 a named pattern file is missing or holds an invalid regex / 64 bad usage.
 # Scanner is perl (PCRE) so the existing .NET-style patterns (\b, \d, (?:...)) work unchanged.
 set -uo pipefail
 
@@ -13,10 +13,10 @@ exclude='\.git/'
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --path)           path="$2"; shift 2 ;;
-    --pattern-file)   pattern_file="$2"; shift 2 ;;
-    --extra-patterns) extra_patterns="$2"; shift 2 ;;
-    --exclude)        exclude="$2"; shift 2 ;;
+    --path)           [ $# -ge 2 ] || { echo "ERROR: --path needs a value" >&2; exit 64; }; path="$2"; shift 2 ;;
+    --pattern-file)   [ $# -ge 2 ] || { echo "ERROR: --pattern-file needs a value" >&2; exit 64; }; pattern_file="$2"; shift 2 ;;
+    --extra-patterns) [ $# -ge 2 ] || { echo "ERROR: --extra-patterns needs a value" >&2; exit 64; }; extra_patterns="$2"; shift 2 ;;
+    --exclude)        [ $# -ge 2 ] || { echo "ERROR: --exclude needs a value" >&2; exit 64; }; exclude="$2"; shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
@@ -39,14 +39,15 @@ fi
 
 if [ ! -s "$combined" ]; then echo "OK: no patterns loaded - nothing to check"; exit 0; fi
 
-# Validate every pattern compiles as a perl regex. A broken pattern fails the gate
-# LOUD and deterministically (exit 2) — never a silent skip or an undefined exit 255.
+# Validate every pattern compiles as a perl regex. A broken pattern fails the gate LOUD and
+# deterministically (exit 2) — never a silent skip or an undefined exit 255. Patterns are
+# trimmed of surrounding whitespace so a stray trailing space can't silently disable one.
 if ! perl -e '
   my $pf = shift;
   open(my $ph, "<", $pf) or die "patterns: $!";
   my $bad = 0;
   while (my $p = <$ph>) {
-    $p =~ s/\r?\n$//; next unless length $p;
+    $p =~ s/\r?\n$//; $p =~ s/^\s+//; $p =~ s/\s+$//; next unless length $p;
     eval { qr/$p/ };
     if ($@) { (my $m = $@) =~ s/\n.*//s; print STDERR "Invalid pattern: $p  ($m)\n"; $bad = 1; }
   }
@@ -57,12 +58,17 @@ if ! perl -e '
 fi
 
 # Build file list: single file as-is, else enumerate by extension and apply --exclude.
-# An EMPTY --exclude must NOT drop every file (grep -vE '' matches all → false-clean);
-# only filter when a non-empty exclude regex is supplied.
+# -iname (case-insensitive) so an uppercase extension (README.MD, Config.JSON) is NOT skipped.
+# An EMPTY --exclude must NOT drop every file (grep -vE '' matches all -> false-clean); only
+# filter when a non-empty exclude regex is supplied.
 enumerate() {
   find "$1" -type f \( \
-      -name '*.md' -o -name '*.json' -o -name '*.yaml' -o -name '*.yml' \
-      -o -name '*.ps1' -o -name '*.txt' -o -name '*.js' -o -name '*.ts' -o -name '*.sh' \
+      -iname '*.md' -o -iname '*.json' -o -iname '*.yaml' -o -iname '*.yml' \
+      -o -iname '*.ps1' -o -iname '*.txt' -o -iname '*.js' -o -iname '*.ts' -o -iname '*.sh' \
+      -o -iname '*.env' -o -iname '*.pem' -o -iname '*.key' -o -iname '*.cfg' \
+      -o -iname '*.conf' -o -iname '*.ini' -o -iname '*.toml' -o -iname '*.xml' \
+      -o -iname '*.html' -o -iname '*.py' -o -iname '*.rb' -o -iname '*.go' \
+      -o -iname '*.java' -o -iname '*.csv' \
     \) 2>/dev/null
 }
 
@@ -74,18 +80,25 @@ else
   enumerate "$path" > "$filelist" || true
 fi
 
-# Scan with perl (PCRE).
+# Scan with perl (PCRE). An enumerated-but-unreadable file is surfaced as FAILED and fails the
+# gate (fail-soft != silent) — it must never be silently skipped into a false 'clean'.
 perl -e '
   my ($pf, $lf) = @ARGV;
   open(my $ph, "<", $pf) or die "patterns: $!";
-  my @pats = grep { length } map { my $x = $_; $x =~ s/\r?\n$//; $x } <$ph>;
+  my @pats = grep { length } map { my $x = $_; $x =~ s/\r?\n$//; $x =~ s/^\s+//; $x =~ s/\s+$//; $x } <$ph>;
   close($ph);
   open(my $lh, "<", $lf) or die "filelist: $!";
   my $hits = 0;
+  my $unreadable = 0;
   while (my $file = <$lh>) {
     $file =~ s/\r?\n$//;
     next unless length $file;
-    open(my $fh, "<", $file) or next;
+    my $fh;
+    if (!open($fh, "<", $file)) {
+      print "FAILED: cannot read $file: $!\n";
+      $unreadable++;
+      next;
+    }
     while (my $line = <$fh>) {
       for my $p (@pats) {
         if ($line =~ /$p/) {
@@ -99,6 +112,7 @@ perl -e '
     close($fh);
   }
   close($lh);
-  if ($hits > 0) { print "FAIL: $hits leak(s)\n"; exit 1; }
+  if ($hits > 0)       { print "FAIL: $hits leak(s)\n"; exit 1; }
+  if ($unreadable > 0) { print "FAIL: $unreadable unreadable file(s) - cannot certify clean\n"; exit 1; }
   print "OK: no leaks\n"; exit 0;
 ' "$combined" "$filelist"
