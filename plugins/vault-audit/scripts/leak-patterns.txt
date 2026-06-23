@@ -1,0 +1,14 @@
+# vault-audit generic leak patterns (shipped). Common secret / PII shapes.
+# These are intentionally generic. Add your OWN instance-specific patterns at
+# run time:  leak-audit.ps1 -ExtraPatterns <your-private-file>
+# (each non-comment line is a .NET regex)
+
+# Windows user-profile absolute paths
+[A-Za-z]:\\Users\\[^\\\r\n"' ]+
+# Common credential / token prefixes
+ghp_[0-9A-Za-z]{20,}
+github_pat_[0-9A-Za-z_]{20,}
+AKIA[0-9A-Z]{16}
+xox[baprs]-[0-9A-Za-z-]{10,}
+sk-[0-9A-Za-z]{20,}
+-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----
