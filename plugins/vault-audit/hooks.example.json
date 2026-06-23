@@ -3,11 +3,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "_comment": "Print the behavior layer into context at the start of every session. The simplest portable form is to cat / Get-Content the file. On Windows, emit no-BOM UTF-8 so non-ASCII echoes safely (a leading BOM can corrupt the first injected line).",
+        "_comment": "Copy `behavior-layer.example.md` into your own vault as `behavior-layer.md` (e.g. at your project root) and point this command at it. `${CLAUDE_PROJECT_DIR}` resolves to your project root at runtime. On Windows, emit no-BOM UTF-8 so non-ASCII echoes safely (a leading BOM can corrupt the first injected line).",
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); Get-Content -Raw -Encoding utf8 './plugins/vault-audit/behavior-layer.md'\""
+            "command": "powershell -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); Get-Content -Raw -Encoding utf8 '${CLAUDE_PROJECT_DIR}/behavior-layer.md'\""
           }
         ]
       }
