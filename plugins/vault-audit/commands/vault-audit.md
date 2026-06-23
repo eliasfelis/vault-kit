@@ -149,7 +149,7 @@ Dispatch via the Agent tool **sequentially, in the foreground** — one Agent ca
 ```
 Agent(
   description: "Junker vault audit",
-  subagent_type: "vault-audit:junker",  <!-- TODO-VERIFY: confirm exact registered subagent_type via /agents after install (Task 8) -->
+  subagent_type: "vault-audit:junker",
   isolation: "worktree",
   model: "sonnet",
   prompt: <junker prompt above>
@@ -161,7 +161,7 @@ Agent(
 ```
 Agent(
   description: "Builder vault audit",
-  subagent_type: "vault-audit:builder",  <!-- TODO-VERIFY: confirm exact registered subagent_type via /agents after install (Task 8) -->
+  subagent_type: "vault-audit:builder",
   isolation: "worktree",
   model: "sonnet",
   prompt: <builder prompt above>
@@ -322,7 +322,7 @@ Surface every deletion (and every skip/failure) in the run summary — fail-soft
 
 - Current branch must be `main` (else error and exit).
 - `${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1` + `${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1` must be available.
-- Plugin agents `vault-audit:junker` and `vault-audit:builder` must be registered (verify with `/agents` after install — see `TODO-VERIFY` comments in Step 6).
+- Plugin agents `vault-audit:junker` and `vault-audit:builder` must be registered (the `<plugin>:<agent>` form is the Claude Code plugin-namespacing convention; check `/agents` only if a dispatch ever fails to resolve).
 - A rules pack `rules.yaml` (or `rules.example.yaml` fallback) must be readable.
 
 ## Failure handling
