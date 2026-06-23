@@ -30,16 +30,16 @@ Load and parse the rules pack — locate `rules.yaml` beside the plugin (`${CLAU
 
 Read current UTC time, apply `cfg.vault.timezone_offset_hours` (default `0` = UTC), format as `YYYY-MM-DD-HHMM`. Example: `2026-05-18-1430`.
 
-PowerShell to compute (with offset from the rules pack — replace `<OFFSET>` with the integer value):
+Compute the timestamp (with offset from the rules pack — replace `<OFFSET>` with the integer value). `perl` is bundled with Git on every platform:
 
-```powershell
-powershell -NoProfile -Command "[DateTime]::UtcNow.AddHours(<OFFSET>).ToString('yyyy-MM-dd-HHmm')"
+```bash
+perl -e 'use POSIX; print strftime("%Y-%m-%d-%H%M", gmtime(time + ($ARGV[0]*3600)))' <OFFSET>
 ```
 
 If the rules pack is not yet loaded at this point, default to UTC (offset 0):
 
-```powershell
-powershell -NoProfile -Command "[DateTime]::UtcNow.ToString('yyyy-MM-dd-HHmm')"
+```bash
+date -u +%Y-%m-%d-%H%M
 ```
 
 Store as `{TS}`.
@@ -48,8 +48,8 @@ Store as `{TS}`.
 
 Run the preflight helper:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1"
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh"
 ```
 
 The script prints JSON `{ "unmerged_count": <int>, "branches": [<string>...] }` listing unmerged `linter/*` and `judge/*` branches.
@@ -60,15 +60,15 @@ If `unmerged_count > 0`:
 
 ### Step 4: Acquire lock
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1" -Action acquire
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/lock.sh" acquire
 ```
 
 Check exit code:
 - `0` (acquired) → proceed.
 - `1` (busy) → display lock status (PID + age), ask user via AskUserQuestion: "Wait (re-run /vault-audit later) / Force release and proceed / Abort."
   - Wait → emit "Lock busy. Re-run /vault-audit when the current run completes." and exit.
-  - Force release → run `lock.ps1 -Action force-release`, then re-acquire (`lock.ps1 -Action acquire`).
+  - Force release → run `lock.sh force-release`, then re-acquire (`lock.sh acquire`).
   - Abort → exit.
 
 ### Step 5: Dispatch announce
@@ -285,8 +285,8 @@ Note on git-mv: if the summary file (or any audit file) is later relocated with 
 
 Release the lock:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1" -Action release
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/lock.sh" release
 ```
 
 Emit the final user message (adapt counts for zero-findings cases):
@@ -321,7 +321,7 @@ Surface every deletion (and every skip/failure) in the run summary — fail-soft
 ## Inputs
 
 - Current branch must be `main` (else error and exit).
-- `${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1` + `${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1` must be available.
+- `${CLAUDE_PLUGIN_ROOT}/scripts/lock.sh` + `${CLAUDE_PLUGIN_ROOT}/scripts/preflight.sh` must be available.
 - Plugin agents `vault-audit:linter` and `vault-audit:judge` must be registered (the `<plugin>:<agent>` form is the Claude Code plugin-namespacing convention; check `/agents` only if a dispatch ever fails to resolve).
 - A rules pack `rules.yaml` (or `rules.example.yaml` fallback) must be readable.
 
