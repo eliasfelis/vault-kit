@@ -26,6 +26,8 @@ Extract flag set from user invocation. Validate:
 
 ### Step 2: Compute `{TS}`
 
+Load and parse the rules pack — locate `rules.yaml` beside the plugin (`${CLAUDE_PLUGIN_ROOT}/rules.yaml`), falling back to `${CLAUDE_PLUGIN_ROOT}/rules.example.yaml` if absent — and store the parsed object as `cfg` **once here**; all later `cfg.*` references (timezone, `cfg.report.dir`, `cfg.vault.root`, etc.) read from this object.
+
 Read current UTC time, apply `cfg.vault.timezone_offset_hours` (default `0` = UTC), format as `YYYY-MM-DD-HHMM`. Example: `2026-05-18-1430`.
 
 PowerShell to compute (with offset from the rules pack — replace `<OFFSET>` with the integer value):
