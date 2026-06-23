@@ -1,4 +1,4 @@
-# Judgment checks - opinionated starter (read by the `builder` agent)
+# Judgment checks - opinionated starter (read by the `judge` agent)
 
 Proven, structure-agnostic checks for any Claude-Code knowledge vault. Each entry:
 `id`, `rule`, `detect`, `severity`. Copy to `rules.md` and adjust; for a bare 3-example

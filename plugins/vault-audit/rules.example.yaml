@@ -54,4 +54,4 @@ memory:                           # optional — OFF by default
   index_file: "MEMORY.md"
 
 report:
-  dir: ".vault-audit"             # where the Builder writes its standalone report
+  dir: ".vault-audit"             # where the Judge writes its standalone report

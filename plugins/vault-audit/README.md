@@ -2,8 +2,8 @@
 
 Audits a Claude-Code Markdown vault against its own declared rules. Two agents, isolated worktrees, main branch untouched.
 
-- **Junker** — deterministic fixer (broken refs, frontmatter, naming, duplicates, staleness). Autofixes on a throwaway branch; surfaces ambiguous items for decision.
-- **Builder** — judgment reviewer (anti-patterns, declaration-vs-reality drift). Writes a standalone report, never edits files.
+- **Linter** — deterministic fixer (broken refs, frontmatter, naming, duplicates, staleness). Autofixes on a throwaway branch; surfaces ambiguous items for decision.
+- **Judge** — judgment reviewer (anti-patterns, declaration-vs-reality drift). Writes a standalone report, never edits files.
 
 ---
 
@@ -45,7 +45,7 @@ Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.
 | `duplicates` | Flags files with identical basenames across the tree. Supports `exempt_basenames`. |
 | `staleness` | Per-glob rules: checks that a frontmatter date field is within `max_age_days`. |
 | `memory` | Optional memory-folder hygiene (off by default). Set `enabled: true` and `path` to your Claude-Code memory folder. |
-| `report.dir` | Where the Builder writes its standalone report (default: `.vault-audit`). |
+| `report.dir` | Where the Judge writes its standalone report (default: `.vault-audit`). |
 
 The judgment checks (`anti_patterns` and `drift_checks`) live in `rules.example.md`. Copy it to `rules.md` and replace the examples with your own declared rules.
 
@@ -56,22 +56,22 @@ The judgment checks (`anti_patterns` and `drift_checks`) live in `rules.example.
 | Flag | Effect |
 |---|---|
 | `--dry-run` | Both agents detect issues but write nothing and make no commits. Returns would-have-been summary. |
-| `--junker-only` | Skip Builder dispatch. |
-| `--builder-only` | Skip Junker dispatch. |
+| `--linter-only` | Skip Judge dispatch. |
+| `--judge-only` | Skip Linter dispatch. |
 
-Flags may combine: `--junker-only --dry-run`.
+Flags may combine: `--linter-only --dry-run`.
 
 ---
 
 ## Output
 
-- **Junker** commits autofixes to a `junker/<TS>` branch. Ambiguous items surface in the run summary as a requires-decision list. Review with `git diff main...junker/<TS>` before merging.
-- **Builder** writes a standalone findings report under `.vault-audit/` (configurable via `report.dir`). The run summary links to it.
+- **Linter** commits autofixes to a `linter/<TS>` branch. Ambiguous items surface in the run summary as a requires-decision list. Review with `git diff main...linter/<TS>` before merging.
+- **Judge** writes a standalone findings report under `.vault-audit/` (configurable via `report.dir`). The run summary links to it.
 
 Neither agent touches your main branch.
 
 ---
 
-## Windows-only (v0.1)
+## Windows-only (for now)
 
 The lock/preflight/leak-audit helpers are PowerShell scripts. Requires Windows + PowerShell 5.1. A cross-platform port is a future item.

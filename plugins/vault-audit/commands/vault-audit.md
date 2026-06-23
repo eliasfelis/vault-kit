@@ -1,28 +1,28 @@
 ---
-description: "Audit your vault against its rules pack: junker fixes deterministic issues, builder reports judgment-call drift."
+description: "Audit your vault against its rules pack: linter fixes deterministic issues, judge reports judgment-call drift."
 ---
 
 # /vault-audit — audit a vault against its rules pack
 
-Dispatches two subagents sequentially in the foreground: the **Junker** (deterministic fixer) runs first, then the **Builder** (judgment reviewer). Both run in isolated git worktrees. Branches surface findings; main branch is untouched.
+Dispatches two subagents sequentially in the foreground: the **Linter** (deterministic fixer) runs first, then the **Judge** (judgment reviewer). Both run in isolated git worktrees. Branches surface findings; main branch is untouched.
 
 ## Flags
 
 | Flag | Effect |
 |---|---|
-| (none) | Vault-only mode: both agents. Junker runs categories A–E (+H if enabled). Builder runs all judgment checks. |
+| (none) | Vault-only mode: both agents. Linter runs categories A–E (+H if enabled). Judge runs all judgment checks. |
 | `--dry-run` | Both agents detect but write/commit nothing. Returns would-have-been summary. |
-| `--junker-only` | Skip Builder dispatch. |
-| `--builder-only` | Skip Junker dispatch. |
+| `--linter-only` | Skip Judge dispatch. |
+| `--judge-only` | Skip Linter dispatch. |
 
-`--junker-only` and `--builder-only` are mutually exclusive (error if both passed). Flags may combine: `--junker-only --dry-run`, etc.
+`--linter-only` and `--judge-only` are mutually exclusive (error if both passed). Flags may combine: `--linter-only --dry-run`, etc.
 
 ## Behavior
 
 ### Step 1: Parse flags
 
 Extract flag set from user invocation. Validate:
-- If both `--junker-only` and `--builder-only` → emit error "Cannot pass both --junker-only and --builder-only" and exit.
+- If both `--linter-only` and `--judge-only` → emit error "Cannot pass both --linter-only and --judge-only" and exit.
 
 ### Step 2: Compute `{TS}`
 
@@ -52,7 +52,7 @@ Run the preflight helper:
 powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1"
 ```
 
-The script prints JSON `{ "unmerged_count": <int>, "branches": [<string>...] }` listing unmerged `junker/*` and `builder/*` branches.
+The script prints JSON `{ "unmerged_count": <int>, "branches": [<string>...] }` listing unmerged `linter/*` and `judge/*` branches.
 
 If `unmerged_count > 0`:
 - Display the list of unmerged branches.
@@ -77,29 +77,29 @@ Emit this **before** the Step 6 dispatch:
 
 ```
 /vault-audit running (sequential foreground)
-- Junker → junker/{TS}  (mode: {junker_mode})
-- Builder → builder/{TS}  (mode: {builder_mode})
+- Linter → linter/{TS}  (mode: {linter_mode})
+- Judge → judge/{TS}  (mode: {judge_mode})
 
-Agents run in isolated worktrees, one at a time (Junker → Builder). Main branch is untouched.
+Agents run in isolated worktrees, one at a time (Linter → Judge). Main branch is untouched.
 Session is busy for the duration of the run (~10–20 min) — this is foreground, not background.
 ```
 
-If `--junker-only` or `--builder-only`, list only the dispatched agent.
+If `--linter-only` or `--judge-only`, list only the dispatched agent.
 
 ### Step 6: Sequential foreground dispatch
 
-**Sequential foreground is required** — Junker first, then Builder, each run in the foreground one at a time. NOT parallel, NOT `run_in_background`. Rationale: parallel background dispatch has caused worktree isolation failures and main-branch drift. Foreground-sequential keeps the orchestrator holding the session so a PWD-guard can catch any agent that strays onto the main branch. Parallel/background dispatch requires an explicit separate decision and an edit to this step.
+**Sequential foreground is required** — Linter first, then Judge, each run in the foreground one at a time. NOT parallel, NOT `run_in_background`. Rationale: parallel background dispatch has caused worktree isolation failures and main-branch drift. Foreground-sequential keeps the orchestrator holding the session so a PWD-guard can catch any agent that strays onto the main branch. Parallel/background dispatch requires an explicit separate decision and an edit to this step.
 
 Decide which agents to dispatch based on flags:
 - Default / `--dry-run`: dispatch both.
-- `--junker-only`: dispatch Junker only.
-- `--builder-only`: dispatch Builder only.
+- `--linter-only`: dispatch Linter only.
+- `--judge-only`: dispatch Judge only.
 
-Derive `junker_mode`:
+Derive `linter_mode`:
 - `--dry-run` → `dry-run`
 - else → `vault-only`
 
-Derive `builder_mode`:
+Derive `judge_mode`:
 - `--dry-run` → `dry-run`
 - else → `vault-only`
 
@@ -109,15 +109,15 @@ Locate the rules pack files:
 
 Construct prompts:
 
-**Junker prompt:**
+**Linter prompt:**
 
 ```
-You are junker. Run the vault audit per your prompt.
+You are linter. Run the vault audit per your prompt.
 
 Parameters:
 - TS: {TS}
-- mode: {junker_mode}
-- branch_name: junker/{TS}
+- mode: {linter_mode}
+- branch_name: linter/{TS}
 - rules_path: {rules_path}
 
 Operate at the vault root resolved from the rules pack (cfg.vault.root). Return structured JSON per your spec.
@@ -125,15 +125,15 @@ Operate at the vault root resolved from the rules pack (cfg.vault.root). Return 
 PWD-GUARD (mandatory): you run in an isolated git worktree. Before ANY git write (add/commit/branch), run `git rev-parse --show-toplevel` and confirm it is your worktree path, NOT the main vault root. If you are on the main vault root, ABORT immediately, make no commits, and report `"errors": ["pwd-guard: landed on main, aborted"]`. Never `git checkout main`, never commit to main.
 ```
 
-**Builder prompt:**
+**Judge prompt:**
 
 ```
-You are builder. Run the vault audit per your prompt.
+You are judge. Run the vault audit per your prompt.
 
 Parameters:
 - TS: {TS}
-- mode: {builder_mode}
-- branch_name: builder/{TS}
+- mode: {judge_mode}
+- branch_name: judge/{TS}
 - rules_md_path: {rules_md_path}
 - rules_path: {rules_path}
 
@@ -144,27 +144,27 @@ PWD-GUARD (mandatory): you run in an isolated git worktree. Before ANY git write
 
 Dispatch via the Agent tool **sequentially, in the foreground** — one Agent call per message, await each result before dispatching the next.
 
-**Step 6a — dispatch Junker** (skip if `--builder-only`), await its structured JSON:
+**Step 6a — dispatch Linter** (skip if `--judge-only`), await its structured JSON:
 
 ```
 Agent(
-  description: "Junker vault audit",
-  subagent_type: "vault-audit:junker",
+  description: "Linter vault audit",
+  subagent_type: "vault-audit:linter",
   isolation: "worktree",
   model: "sonnet",
-  prompt: <junker prompt above>
+  prompt: <linter prompt above>
 )
 ```
 
-**Step 6b — after Junker returns, dispatch Builder** (skip if `--junker-only`), await its structured JSON:
+**Step 6b — after Linter returns, dispatch Judge** (skip if `--linter-only`), await its structured JSON:
 
 ```
 Agent(
-  description: "Builder vault audit",
-  subagent_type: "vault-audit:builder",
+  description: "Judge vault audit",
+  subagent_type: "vault-audit:judge",
   isolation: "worktree",
   model: "sonnet",
-  prompt: <builder prompt above>
+  prompt: <judge prompt above>
 )
 ```
 
@@ -172,14 +172,14 @@ Foreground dispatch means each Agent call blocks until the agent finishes and re
 
 ### Step 7: Collect results (inline)
 
-Foreground dispatch means each Agent call returns its structured JSON inline the moment that agent finishes — there is no background run, no harness notification, no polling. Collect Junker's JSON when its call returns, then (after dispatching Builder in Step 6b) collect Builder's JSON the same way. Proceed to Step 8 once all dispatched agents have returned.
+Foreground dispatch means each Agent call returns its structured JSON inline the moment that agent finishes — there is no background run, no harness notification, no polling. Collect Linter's JSON when its call returns, then (after dispatching Judge in Step 6b) collect Judge's JSON the same way. Proceed to Step 8 once all dispatched agents have returned.
 
 ### Step 8: Parse results
 
 For each returned agent JSON, extract:
 - `branch` (may be null if no findings and worktree was auto-cleaned).
-- Junker: `autofixed` per-category counts + commit hashes, `requires_decision` list, `skipped_rate_limit` counts, `errors`.
-- Builder: `findings` list, `report_path`, `skipped` list, `errors`.
+- Linter: `autofixed` per-category counts + commit hashes, `requires_decision` list, `skipped_rate_limit` counts, `errors`.
+- Judge: `findings` list, `report_path`, `skipped` list, `errors`.
 
 Edge cases:
 - If JSON parse fails → log `"errors": ["agent returned non-JSON output"]` for that agent, continue.
@@ -207,38 +207,38 @@ date: {YYYY-MM-DD from TS}
 
 ## TLDR
 
-- **Junker:** {N_total_autofix} autofixes, {M_requires_decision} requires-decision
-- **Builder:** {K_findings} findings ({S_skipped} skipped by rate limit), report: `{builder_report_path}`
-- **Mode:** {mode_label}  (vault-only / dry-run / junker-only / builder-only)
+- **Linter:** {N_total_autofix} autofixes, {M_requires_decision} requires-decision
+- **Judge:** {K_findings} findings ({S_skipped} skipped by rate limit), report: `{judge_report_path}`
+- **Mode:** {mode_label}  (vault-only / dry-run / linter-only / judge-only)
 - **Branches:**
-  - `junker/{TS}` ({junker_commit_count} commits; or "no findings — worktree auto-cleaned")
-  - `builder/{TS}` ({builder_commit_count} commits; or "no findings — worktree auto-cleaned")
+  - `linter/{TS}` ({linter_commit_count} commits; or "no findings — worktree auto-cleaned")
+  - `judge/{TS}` ({judge_commit_count} commits; or "no findings — worktree auto-cleaned")
 
-## Junker findings
+## Linter findings
 
 ### Autofixed
 
 | Category | Count | Commit |
 |---|---|---|
-| Broken refs | {junker.autofixed.broken_refs.count} | `{junker.autofixed.broken_refs.commit}` |
-| Frontmatter | {junker.autofixed.frontmatter.count} | `{junker.autofixed.frontmatter.commit}` |
-| Naming | {junker.autofixed.naming.count} | `{junker.autofixed.naming.commit}` |
+| Broken refs | {linter.autofixed.broken_refs.count} | `{linter.autofixed.broken_refs.commit}` |
+| Frontmatter | {linter.autofixed.frontmatter.count} | `{linter.autofixed.frontmatter.commit}` |
+| Naming | {linter.autofixed.naming.count} | `{linter.autofixed.naming.commit}` |
 
 ### Requires decision
 
-(for each item in `junker.requires_decision`:)
+(for each item in `linter.requires_decision`:)
 
 1. **{path}** — {issue}
    - Suggested action: {suggested_action}
 
 ### Skipped (rate limit)
 
-(for each non-zero entry in `junker.skipped_rate_limit`:)
+(for each non-zero entry in `linter.skipped_rate_limit`:)
 - {category}: {count} more found, deferred to next run.
 
 ### Memory hygiene autofixes (H1/H2/H3)
 
-(Render this section only if `junker.memory_hygiene` is non-null and has any non-empty array or non-zero `skipped_rate_limit` entry.)
+(Render this section only if `linter.memory_hygiene` is non-null and has any non-empty array or non-zero `skipped_rate_limit` entry.)
 
 **H1: Orphan files added to index** ({len})
 (list files + index lines added)
@@ -252,9 +252,9 @@ date: {YYYY-MM-DD from TS}
 **Skipped (rate limit):**
 (per subcategory h1/h2/h3 counts > 0)
 
-## Builder findings
+## Judge findings
 
-(for each finding in `builder.findings`, grouped by severity critical → warning → suggestion:)
+(for each finding in `judge.findings`, grouped by severity critical → warning → suggestion:)
 
 ### {severity}
 
@@ -264,17 +264,17 @@ date: {YYYY-MM-DD from TS}
 
 ### Skipped (rate limit)
 
-(for each item in `builder.skipped`:)
+(for each item in `judge.skipped`:)
 - `{id}` — {reason}
 
 ## Errors / warnings
 
-(Combined from junker.errors + builder.errors. Omit this section if both are empty.)
+(Combined from linter.errors + judge.errors. Omit this section if both are empty.)
 
 ## Next steps
 
-1. Review `git log junker/{TS}` and `git diff main...junker/{TS}`. Merge the Junker branch if OK.
-2. Review Builder report at `{builder_report_path}` and decide on findings.
+1. Review `git log linter/{TS}` and `git diff main...linter/{TS}`. Merge the Linter branch if OK.
+2. Review Judge report at `{judge_report_path}` and decide on findings.
 3. Resolve requires-decision items listed above.
 4. After approving merges, run Step 11 cleanup (delete branches + worktrees).
 ```
@@ -294,14 +294,14 @@ Emit the final user message (adapt counts for zero-findings cases):
 ```
 Vault audit complete.
 
-Junker: {N} autofixes on `junker/{TS}` + {M} requires-decision.
-Builder: {K} findings on `builder/{TS}` ({S} skipped). Report: `{builder_report_path}`.
+Linter: {N} autofixes on `linter/{TS}` + {M} requires-decision.
+Judge: {K} findings on `judge/{TS}` ({S} skipped). Report: `{judge_report_path}`.
 
 Run summary: `<cfg.report.dir>/vault-audit-summary-{TS}.md`
-Review: `git log junker/{TS}` / `git diff main...junker/{TS}`
+Review: `git log linter/{TS}` / `git diff main...linter/{TS}`
 ```
 
-If any agent had errors, list them explicitly in the message. If an agent had zero findings (e.g. "Junker: clean — 0 autofixes, 0 requires-decision"), say so.
+If any agent had errors, list them explicitly in the message. If an agent had zero findings (e.g. "Linter: clean — 0 autofixes, 0 requires-decision"), say so.
 
 ### Step 11: Post-merge cleanup
 
@@ -309,12 +309,12 @@ The orchestrator's job does not end at the summary (Step 9) and lock release (St
 
 This step is **interactive and gated on the user's merge approval** — never auto-merge, never auto-delete a branch with unmerged findings.
 
-1. **After an approved merge** of `junker/{TS}` or `builder/{TS}` into main:
+1. **After an approved merge** of `linter/{TS}` or `judge/{TS}` into main:
    - Delete the branch: `git branch -d <role>/{TS}` (use `-d`, not `-D` — `-d` refuses to delete unmerged branches, a safety net).
    - Remove the agent's worktree: find it via `git worktree list`, then `git worktree remove <worktree-path>`. If the worktree was already auto-cleaned (no findings), skip.
    - Run `git worktree prune` to clear any stale administrative entries.
 
-2. **Stale-branch sweep (preflight-driven).** Step 3 preflight already reports unmerged `junker/*` and `builder/*` branches (`unmerged_count` + `branches`). When that list is non-empty at the START of a run, for each branch older than ~7 days: check whether its findings are already disposed (e.g. already merged or otherwise resolved); if so, propose `git branch -D` + `git worktree remove` to the user via AskUserQuestion. Never delete unmerged work whose findings are not yet resolved.
+2. **Stale-branch sweep (preflight-driven).** Step 3 preflight already reports unmerged `linter/*` and `judge/*` branches (`unmerged_count` + `branches`). When that list is non-empty at the START of a run, for each branch older than ~7 days: check whether its findings are already disposed (e.g. already merged or otherwise resolved); if so, propose `git branch -D` + `git worktree remove` to the user via AskUserQuestion. Never delete unmerged work whose findings are not yet resolved.
 
 Surface every deletion (and every skip/failure) in the run summary — fail-soft is not silent: a skipped or failed cleanup must appear as an explicit line, never silently omitted.
 
@@ -322,7 +322,7 @@ Surface every deletion (and every skip/failure) in the run summary — fail-soft
 
 - Current branch must be `main` (else error and exit).
 - `${CLAUDE_PLUGIN_ROOT}/scripts/lock.ps1` + `${CLAUDE_PLUGIN_ROOT}/scripts/preflight.ps1` must be available.
-- Plugin agents `vault-audit:junker` and `vault-audit:builder` must be registered (the `<plugin>:<agent>` form is the Claude Code plugin-namespacing convention; check `/agents` only if a dispatch ever fails to resolve).
+- Plugin agents `vault-audit:linter` and `vault-audit:judge` must be registered (the `<plugin>:<agent>` form is the Claude Code plugin-namespacing convention; check `/agents` only if a dispatch ever fails to resolve).
 - A rules pack `rules.yaml` (or `rules.example.yaml` fallback) must be readable.
 
 ## Failure handling

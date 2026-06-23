@@ -1,6 +1,6 @@
 # vault-kit
 
-A small collection of operational tools for running a Claude-Code Markdown knowledge vault. First tool: `vault-audit`.
+A small collection of operational tools for running a Claude-Code Markdown knowledge vault. First (and so far only) tool: `vault-audit`.
 
 ---
 
@@ -8,8 +8,8 @@ A small collection of operational tools for running a Claude-Code Markdown knowl
 
 `vault-audit` audits a vault against its **own declared rules** — a rules pack you fill in once. Two agents, each in an isolated git worktree:
 
-- **Junker** — the deterministic fixer. Scans for broken links, frontmatter rot, naming violations, duplicates, and staleness. Autofixes safe issues on a throwaway branch you review before merge; surfaces ambiguous ones for your decision.
-- **Builder** — the judgment reviewer. Checks your declared anti-patterns and declaration-vs-reality drift (e.g. folders named in your config that don't exist). Writes a standalone findings report. Never edits files.
+- **Linter** — the deterministic fixer. Scans for broken links, frontmatter rot, naming violations, duplicates, and staleness. Autofixes safe issues on a throwaway branch you review before merge; surfaces ambiguous ones for your decision.
+- **Judge** — the judgment reviewer. Checks your declared anti-patterns and declaration-vs-reality drift (e.g. folders named in your config that don't exist). Writes a standalone findings report. Never edits files.
 
 Nothing touches your main branch without review.
 
@@ -34,13 +34,13 @@ Out of the box the auditor ships with an **opinionated, de-identified starter ru
 
 ### Requirements
 
-Windows + PowerShell 5.1 (v0.1 — the lock/preflight/leak-audit helpers are PowerShell). A cross-platform port is a future item.
+Windows + PowerShell 5.1 — the lock/preflight/leak-audit helpers are PowerShell. A cross-platform port is a future item.
 
 ---
 
-## Take it and use it
+## Use it freely
 
-MIT-licensed. This is shared as-is: issues and PRs may go unanswered. No support desk.
+MIT-licensed and provided as-is. Fork it, adapt it, ship it. I built this for my own vault and opened it up — I may not get to every issue or PR, but you don't need my permission to make it yours.
 
 ---
 

@@ -3,7 +3,7 @@
 Pre-flight check for /vault-audit orchestrator.
 
 .DESCRIPTION
-Lists local branches matching junker/* or builder/* that are not yet merged
+Lists local branches matching linter/* or judge/* that are not yet merged
 into the current branch. Used by the orchestrator to warn about leftover audit
 branches before dispatching a new run.
 
@@ -35,12 +35,12 @@ if ($LASTEXITCODE -ne 0) {
     exit 0
 }
 
-# Collect all local junker/* and builder/* branches.
-$junkerRaw  = & git -C $RepoPath branch --list 'junker/*'  2>$null
-$builderRaw = & git -C $RepoPath branch --list 'builder/*' 2>$null
+# Collect all local linter/* and judge/* branches.
+$linterRaw  = & git -C $RepoPath branch --list 'linter/*'  2>$null
+$judgeRaw = & git -C $RepoPath branch --list 'judge/*' 2>$null
 
 $allBranches = @()
-foreach ($line in (@($junkerRaw) + @($builderRaw))) {
+foreach ($line in (@($linterRaw) + @($judgeRaw))) {
     if ($line) {
         $name = ($line -replace '^\*?\s+', '').Trim()
         if ($name) { $allBranches += $name }

@@ -15,7 +15,7 @@ governance_paths:             # never modified; skipped by all checks
 broken_refs:
   enabled: true
   check_markdown_links: true
-  check_frontmatter_field: "spec"   # "" to skip
+  check_frontmatter_field: ""       # e.g. "spec" — a frontmatter field holding a path to validate; "" to skip
 
 frontmatter:
   enabled: true
