@@ -24,9 +24,13 @@ Nothing touches your main branch without review.
 /plugin install vault-audit@vault-kit
 ```
 
-Then: copy `plugins/vault-audit/rules.example.yaml` → `rules.yaml`, edit it to match your vault, and run `/vault-audit:vault-audit --dry-run`.
+Then: copy `plugins/vault-audit/rules.starter.yaml` (opinionated, proven) — or `plugins/vault-audit/rules.example.yaml` for a bare schema — to `rules.yaml`, edit it to match your vault, and run `/vault-audit:vault-audit --dry-run`.
 
 > **Note:** The exact invocation command and subagent names are confirmed at install via `/plugin validate` and `/agents`.
+
+### Principles & opinionated starter
+
+Out of the box the auditor ships with an **opinionated, de-identified starter rulebook** ([`plugins/vault-audit/rules.starter.yaml`](plugins/vault-audit/rules.starter.yaml) / [`rules.starter.md`](plugins/vault-audit/rules.starter.md)) — proven conventions, not a blank schema. The methodology behind them is in [**`plugins/vault-audit/PRINCIPLES.md`**](plugins/vault-audit/PRINCIPLES.md). And [**`plugins/vault-audit/behavior-layer.example.md`**](plugins/vault-audit/behavior-layer.example.md) (+ [**`hooks.example.json`**](plugins/vault-audit/hooks.example.json)) is a coaching layer you can wire as a SessionStart hook so your assistant reinforces the same principles in-session.
 
 ### Requirements
 

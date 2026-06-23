@@ -28,7 +28,11 @@ Expected findings are listed in `examples/EXPECTED-FINDINGS.md`.
 
 ## Rules pack
 
-Copy `rules.example.yaml` to `rules.yaml` and edit it to match your vault. Each block is optional — omit it to skip that check entirely.
+Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.yaml` for a bare schema — copy your choice to `rules.yaml` and adjust. Each block is optional — omit it to skip that check entirely.
+
+**Principles** — the methodology behind the starter rules: [`PRINCIPLES.md`](PRINCIPLES.md).
+
+**Behavior layer** — optional in-session coaching reflexes: [`behavior-layer.example.md`](behavior-layer.example.md) + [`hooks.example.json`](hooks.example.json) (wire as a SessionStart hook).
 
 | Block | What it controls |
 |---|---|
