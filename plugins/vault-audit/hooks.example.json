@@ -1,0 +1,28 @@
+{
+  "_comment": "Example Claude-Code settings.json hooks fragment. JSON has no comments, so notes live in _comment keys (Claude Code ignores unknown keys). Merge the hooks block into your own settings.json.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "_comment": "Print the behavior layer into context at the start of every session. The simplest portable form is to cat / Get-Content the file. On Windows, emit no-BOM UTF-8 so non-ASCII echoes safely (a leading BOM can corrupt the first injected line).",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); Get-Content -Raw -Encoding utf8 './plugins/vault-audit/behavior-layer.md'\""
+          }
+        ]
+      }
+    ],
+    "_comment_PreToolUse": "A PreToolUse command hook can validate a tool argument against an allowlist and BLOCK the call (exit non-zero) before it runs — e.g. guarding a tag / label set so only an approved vocabulary is ever written. Point its command at your own validator script. Shown here as a commented pattern, not active.",
+    "_PreToolUse_pattern": [
+      {
+        "matcher": "<your-tool-name>",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<path-to-your-allowlist-guard-script>"
+          }
+        ]
+      }
+    ]
+  }
+}
