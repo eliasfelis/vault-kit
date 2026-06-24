@@ -2,7 +2,7 @@
 name: scout
 description: "Fetch curated feeds, filter each item for relevance against the user's interests, and bucket into actionable / news-tier / reject. Returns structured JSON; writes nothing itself."
 model: sonnet
-tools: Read, WebFetch, WebSearch, Glob, Grep
+tools: Read, WebFetch, Glob, Grep
 ---
 
 # Scout — Feed Pull & Significance Filter

@@ -40,8 +40,9 @@ resolved config. Never hardcode a path.
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/feed-state.sh summary <paths.state>
 ```
-If the output is `ok=0 failed=0` (empty state), treat this as a first run and
-enter onboarding.
+If the output STARTS WITH `ok=0 failed=0` (prefix/substring match — the actual
+output may have trailing tokens such as `failed_slugs=`), treat this as a first
+run and enter onboarding.
 
 ### 1a. Show default sources
 
