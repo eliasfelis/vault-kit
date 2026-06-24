@@ -35,7 +35,7 @@ Glob `<paths.inbox>/*.md`.
 If the result is empty, print:
 
 ```
-Inbox empty — run /vault-feed:pull first.
+inbox empty — run /vault-feed:pull first
 ```
 
 and STOP. Do not dispatch the triager.
@@ -44,8 +44,8 @@ and STOP. Do not dispatch the triager.
 
 ## Step 2 — Build and surface the ledger
 
-Dispatch the triager in **read-only ledger mode** (no scripted-dispositions) to scan
-`<paths.inbox>` and present its batch ledger:
+Dispatch the triager in **read-only ledger mode** (no scripted-dispositions, no user
+prompting) to scan `<paths.inbox>` and BUILD AND RETURN the batch ledger only:
 
 ```yaml
 subagent_type: vault-feed:triager  # TODO-VERIFY prefix (confirmed at install in Task 9)
@@ -53,15 +53,16 @@ prompt: |
   Config (resolved):
   <inline the full resolved config object as YAML>
 
-  Run in interactive mode (no scripted-dispositions).
-  Present the batch ledger (summary table + recommendation block) to the user and
-  wait for their batched disposition answer.
+  Run in read-only ledger mode (no scripted-dispositions).
+  Build and RETURN the batch ledger (summary table + recommendation block).
+  Do NOT prompt the user — return the ledger to the command and stop.
 ```
 
-The triager will:
-1. Print the summary table (title / source / V/E/C / recommended status).
-2. Print a one-line rationale per item.
-3. Prompt the user:
+The triager returns the ledger (summary table + recommendation block) and exits.
+
+The **command** then:
+1. Surfaces the triager's ledger output **verbatim** to the user.
+2. Immediately follows with the disposition prompt (owned by the command, not the triager):
 
 ```
 Dispositions — reply with one status per item in order, space-separated
@@ -70,8 +71,7 @@ Valid statuses: <comma-separated list from config>.
 Type a single item number to get more detail before deciding.
 ```
 
-Surface the triager's ledger output **verbatim** to the user. Wait for the user's
-batched disposition answer before proceeding.
+Wait for the user's batched disposition answer before proceeding to Step 3.
 
 ---
 
@@ -80,6 +80,10 @@ batched disposition answer before proceeding.
 Parse the user's answer into an ordered list of statuses:
 
 - Space-separated: `"adopt park experiment"` → `["adopt", "park", "experiment"]`.
+  After splitting, validate EACH token against the config `statuses` list. If any
+  token is invalid, print an error naming the bad value(s) and re-prompt — do NOT
+  pass an invalid status into `scripted-dispositions`. Also confirm the token count
+  matches the number of ledger items; if not, print the mismatch and re-prompt.
 - `"all <status>"`: validate `<status>` is in the config `statuses` list, then
   expand to a list of that status repeated for every ledger item. If the status is
   not in the config list, print an error and re-prompt (do not proceed with invalid
@@ -126,10 +130,9 @@ Print a per-status tally, then list the paths of moved files:
 
 ```
 Triage complete:
-  adopt:      N
-  park:       N
-  reject:     N
-  experiment: N
+  <status-1>:  N
+  <status-2>:  N
+  ... (one line per status in config `statuses`)
 ```
 
 The tally iterates over the config `statuses` list (not a hardcoded list of names) —
