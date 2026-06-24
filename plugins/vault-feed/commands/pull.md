@@ -35,8 +35,13 @@ resolved config. Never hardcode a path.
 
 ## Phase 1 — Onboarding
 
-**Trigger:** run if `--setup` was passed, OR if `paths.state` contains no prior
-run-state file (first-ever pull).
+**Trigger:** run if `--setup` was passed, OR if there is no prior run-state
+(first-ever pull). Detect first run by executing:
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/feed-state.sh summary <paths.state>
+```
+If the output is `ok=0 failed=0` (empty state), treat this as a first run and
+enter onboarding.
 
 ### 1a. Show default sources
 
@@ -63,9 +68,13 @@ Ask the user in one message:
 **Only if the user opts in to search (option b).** Run a **one-shot** WebSearch
 (never per-pull — onboarding only) for RSS/Atom feeds matching the `interests`
 string from the resolved config. Propose candidate sources with their URLs. For
-each one the user accepts, append a new entry to `feeds.yaml` (or to
-`feeds.starter.yaml` if no user `feeds.yaml` exists yet — create it first as a
-copy, then append). Entry shape:
+each one the user accepts, append a new entry to `feeds.yaml` at the
+vault/working root. **If no `feeds.yaml` exists there yet:** first copy
+`${CLAUDE_PLUGIN_ROOT}/feeds.starter.yaml` to `<vault_root>/feeds.yaml`, then
+append to `<vault_root>/feeds.yaml`. **NEVER append to or modify
+`${CLAUDE_PLUGIN_ROOT}/feeds.starter.yaml`** — it is a shipped, read-only plugin
+file (regenerated on reinstall; user feed URLs must never land in the plugin tree).
+Entry shape:
 
 ```yaml
 - slug: <url-slug>
@@ -110,6 +119,11 @@ prompt: |
 Wait for the scout to return its result JSON before proceeding.
 
 **Scout return shape:**
+
+Note: the `failed` key name is part of the scout agent's return contract (confirmed
+in the scout spec). Do not rename it — the Phase 3d state-write and the Phase 4
+FAILED summary both key off `scout.failed` by exact name.
+
 ```json
 {
   "actionable": [ <inbox-entry objects> ],
@@ -173,6 +187,7 @@ digest file:
 ---
 date: <date>
 source: vault-feed
+tags: [digest, vault-feed]
 ---
 
 # Feed digest — <date>
