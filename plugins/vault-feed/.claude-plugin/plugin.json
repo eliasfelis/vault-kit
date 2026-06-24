@@ -1,0 +1,8 @@
+{
+  "name": "vault-feed",
+  "description": "Fetch curated feeds, filter for relevance to your stack, triage keepers into a dispositioned backlog.",
+  "version": "0.1.0",
+  "author": { "name": "eliasfelis" },
+  "license": "MIT",
+  "homepage": "https://github.com/eliasfelis/vault-kit"
+}

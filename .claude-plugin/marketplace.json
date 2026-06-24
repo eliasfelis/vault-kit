@@ -6,6 +6,11 @@
       "name": "vault-audit",
       "source": "./plugins/vault-audit",
       "description": "Audit a Claude-Code markdown knowledge vault against its own declared rules: a deterministic fixer + a judgment reviewer, each in an isolated git worktree."
+    },
+    {
+      "name": "vault-feed",
+      "source": "./plugins/vault-feed",
+      "description": "Feed a Claude-Code knowledge vault: fetch curated feeds, filter each item for relevance to your stack, and triage the keepers into a dispositioned backlog. A scout (pull + significance filter) + a triager (interactive disposition)."
     }
   ]
 }
