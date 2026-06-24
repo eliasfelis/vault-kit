@@ -103,7 +103,7 @@ After onboarding (or if it was skipped) → proceed to Phase 2.
 Dispatch the scout subagent with the fully resolved config and feeds:
 
 ```yaml
-subagent_type: vault-feed:scout  # TODO-VERIFY prefix (confirmed at install in Task 9)
+subagent_type: vault-feed:scout
 prompt: |
   Config (resolved):
   <inline the full resolved config object as YAML>

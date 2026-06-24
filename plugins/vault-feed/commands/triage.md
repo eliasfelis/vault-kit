@@ -48,7 +48,7 @@ Dispatch the triager in **read-only ledger mode** (no scripted-dispositions, no 
 prompting) to scan `<paths.inbox>` and BUILD AND RETURN the batch ledger only:
 
 ```yaml
-subagent_type: vault-feed:triager  # TODO-VERIFY prefix (confirmed at install in Task 9)
+subagent_type: vault-feed:triager
 prompt: |
   Config (resolved):
   <inline the full resolved config object as YAML>
@@ -93,7 +93,7 @@ Build `scripted-dispositions` from the parsed list and dispatch the triager agai
 in **write-through mode**:
 
 ```yaml
-subagent_type: vault-feed:triager  # TODO-VERIFY prefix (confirmed at install in Task 9)
+subagent_type: vault-feed:triager
 prompt: |
   Config (resolved):
   <inline the full resolved config object as YAML>

@@ -1,6 +1,6 @@
 # vault-kit
 
-A small collection of operational tools for running a Claude-Code Markdown knowledge vault. First (and so far only) tool: `vault-audit`.
+A small collection of operational tools for running a Claude-Code Markdown knowledge vault. Two tools so far — `vault-audit` and `vault-feed` — with more to come.
 
 ---
 
@@ -38,6 +38,21 @@ Runs on **Windows (via Git Bash), macOS, and Linux**. Needs `bash`, `git`, and `
 
 ---
 
+## vault-feed
+
+`vault-feed` fetches curated feeds, filters each item for relevance to your declared `interests`, and triage keepers into a dispositioned backlog. Set your interests once; a scout agent pulls and classifies, a triager agent runs the batch disposition flow.
+
+See [`plugins/vault-feed/README.md`](plugins/vault-feed/README.md) for the full quickstart, feeds schema, config reference, and the three-bucket model.
+
+### Install
+
+```
+/plugin marketplace add eliasfelis/vault-kit
+/plugin install vault-feed@vault-kit
+```
+
+---
+
 ## Use it freely
 
 MIT-licensed and provided as-is. Fork it, adapt it, ship it. I built this for my own vault and opened it up — I may not get to every issue or PR, but you don't need my permission to make it yours.
@@ -46,7 +61,7 @@ MIT-licensed and provided as-is. Fork it, adapt it, ship it. I built this for my
 
 ## Roadmap
 
-A started collection — more vault tools (an innovation feeder, a triage flow) are planned. `vault-audit` is the first.
+A growing collection. `vault-audit` covers rules-based audit; `vault-feed` delivers the feed-pull + triage flow. More vault tools are planned.
 
 ---
 
