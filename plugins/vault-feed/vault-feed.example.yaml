@@ -1,0 +1,22 @@
+# vault-feed config. Copy to `vault-feed.yaml`, edit to match YOUR stack.
+
+feeds_file: "feeds.yaml"          # falls back to feeds.starter.yaml if absent
+
+interests: |                       # the relevance yardstick — the de-id heart.
+  # Describe YOUR stack and topics. The scout scores each item against this.
+  # Tools I use: <e.g. Claude Code, Obsidian, a Python data stack>.
+  # Topics I track: <e.g. agentic coding, knowledge-management, LLM tooling>.
+  # An item is ACTIONABLE if it changes a capability I depend on, or is directly
+  # applicable to a tracked topic. NEWS-TIER if it is real signal but needs no
+  # action (industry direction). REJECT benchmark-posturing, funding rounds,
+  # wrong-tool features, and out-of-domain topics.
+
+paths:
+  inbox: "feed/inbox"             # actionable entries land here
+  triaged: "feed/triaged"         # triager moves them here with a decision
+  digest: "feed/digest"           # news-tier digest, one file per run
+  state: ".vault-feed/runs"       # run-state (dedup + per-source outcome)
+
+statuses: ["adopt", "park", "reject", "experiment"]
+
+timezone_offset_hours: 0          # report timestamps only

@@ -1,0 +1,165 @@
+# vault-feed default sources. Copy to `feeds.yaml` and edit to taste.
+# Tiers are organisational only (Platforms / Curators / Researchers / PKM-thinkers / gh).
+# type: rss | atom | scrape  (scrape = no public feed; parse the page index by date)
+version: 1
+sources:
+  # Tier 1 — Platforms
+  - slug: anthropic-news
+    name: Anthropic news
+    tier: 1
+    page_url: https://www.anthropic.com/news
+    feed_url: null
+    type: scrape
+    notes: No public RSS; parse the news index ("<Title> — <Date>", /news/<slug>) by date.
+
+  - slug: claude-code-releases
+    name: Claude Code release notes
+    tier: 1
+    page_url: https://github.com/anthropics/claude-code/releases
+    feed_url: https://github.com/anthropics/claude-code/releases.atom
+    type: atom
+    notes: docs.claude.com/en/release-notes/claude-code redirects to the GitHub CHANGELOG; releases.atom is the canonical machine-readable source. Versioned entries (e.g. v2.1.138).
+
+  - slug: openai-blog
+    name: OpenAI news
+    tier: 1
+    page_url: https://openai.com/news
+    feed_url: https://openai.com/news/rss.xml
+    type: rss
+    notes: Canonical feed at /news/rss.xml (page moved from /blog to /news).
+
+  - slug: telegram-blog
+    name: Telegram blog
+    tier: 1
+    page_url: https://telegram.org/blog
+    feed_url: null
+    type: scrape
+    notes: No public RSS; blog index lists posts with dates and /blog/<slug> URLs; parse by date.
+
+  - slug: obsidian-changelog
+    name: Obsidian release notes
+    tier: 1
+    page_url: https://obsidian.md/changelog
+    feed_url: null
+    type: scrape
+
+  # Tier 2 — Curators
+  - slug: simon-willison
+    name: Simon Willison
+    tier: 2
+    page_url: https://simonwillison.net/
+    feed_url: https://simonwillison.net/atom/everything/
+    type: atom
+
+  - slug: agentic-coding-weekly
+    name: Agentic Coding Weekly
+    tier: 2
+    page_url: https://www.agenticcodingweekly.com/archive
+    feed_url: null
+    type: scrape
+    notes: No public RSS (Beehiiv site, endpoints not exposed). Archive page lists issues by date; parse archive.
+
+  - slug: sereja-tech
+    name: Sereja Ris (sereja.tech)
+    tier: 2
+    page_url: https://sereja.tech/
+    feed_url: null
+    type: scrape
+    notes: No public RSS/Atom. Blog index lists posts with dates; parse by date. Author specialises in Claude Code + agentic systems (vibecoding, context architecture, agent design).
+
+  - slug: latent-space
+    name: Latent Space
+    tier: 2
+    page_url: https://www.latent.space/
+    feed_url: https://www.latent.space/feed
+    type: rss
+    notes: Substack — feed at /feed.
+
+  # Tier 3 — Researchers
+  - slug: karpathy
+    name: Andrej Karpathy
+    tier: 3
+    page_url: https://karpathy.bearblog.dev/
+    feed_url: https://karpathy.bearblog.dev/feed/
+    type: rss
+
+  - slug: sebastian-raschka
+    name: Sebastian Raschka
+    tier: 3
+    page_url: https://magazine.sebastianraschka.com/
+    feed_url: https://magazine.sebastianraschka.com/feed
+    type: rss
+    notes: Substack — feed at /feed.
+
+  - slug: eugene-yan
+    name: Eugene Yan
+    tier: 3
+    page_url: https://eugeneyan.com/
+    feed_url: https://eugeneyan.com/rss/
+    type: rss
+
+  # Tier 4 — PKM thinkers
+  - slug: steph-ango
+    name: Steph Ango
+    tier: 4
+    page_url: https://stephango.com/
+    feed_url: https://stephango.com/feed.xml
+    type: rss
+
+  - slug: tiago-forte
+    name: Tiago Forte (Forte Labs)
+    tier: 4
+    page_url: https://fortelabs.com/blog/
+    feed_url: https://fortelabs.com/feed/
+    type: rss
+
+  - slug: eric-ma
+    name: Eric J. Ma
+    tier: 4
+    page_url: https://ericmjl.github.io/blog/
+    feed_url: https://ericmjl.github.io/blog.xml
+    type: atom
+    notes: Canonical feed is blog.xml (not /blog/feed.xml or /feed.xml).
+
+  # GitHub releases (tier "gh" — high signal for tooling)
+  - slug: gh-mcp-servers
+    name: modelcontextprotocol/servers
+    tier: gh
+    page_url: https://github.com/modelcontextprotocol/servers
+    feed_url: https://github.com/modelcontextprotocol/servers/releases.atom
+    type: atom
+
+  - slug: gh-anthropic-sdk-python
+    name: anthropics/anthropic-sdk-python
+    tier: gh
+    page_url: https://github.com/anthropics/anthropic-sdk-python
+    feed_url: https://github.com/anthropics/anthropic-sdk-python/releases.atom
+    type: atom
+
+  - slug: gh-openai-python
+    name: openai/openai-python
+    tier: gh
+    page_url: https://github.com/openai/openai-python
+    feed_url: https://github.com/openai/openai-python/releases.atom
+    type: atom
+
+  - slug: gh-openai-agents-python
+    name: openai/openai-agents-python
+    tier: gh
+    page_url: https://github.com/openai/openai-agents-python
+    feed_url: https://github.com/openai/openai-agents-python/releases.atom
+    type: atom
+
+  - slug: gh-simonw-llm
+    name: simonw/llm
+    tier: gh
+    page_url: https://github.com/simonw/llm
+    feed_url: https://github.com/simonw/llm/releases.atom
+    type: atom
+
+  - slug: gh-openai-whisper
+    name: openai/whisper
+    tier: gh
+    page_url: https://github.com/openai/whisper
+    feed_url: https://github.com/openai/whisper/releases.atom
+    type: atom
