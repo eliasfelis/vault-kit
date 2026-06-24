@@ -56,7 +56,9 @@ For each file found:
   `value`, `effort`, `confidence`, `decision_reason`.
 - If frontmatter is missing or malformed: warn ("Skipping <filename>: malformed frontmatter"),
   skip the file, and continue. Do not crash.
-- Only process entries with `status: inbox`.
+- Only process entries with `status: inbox`. If any file has a `status` value other than
+  `inbox`, skip it AND record the skip in the run summary: "Skipped <filename>: status
+  is '<value>', not inbox." A user must never see a silently-lower item count.
 
 ---
 
@@ -103,6 +105,11 @@ Valid statuses: <comma-separated list from config>.
 Type a single item number to get more detail before deciding.
 ```
 
+When the user replies `all <status>`: validate `<status>` is in the config `statuses` list
+BEFORE expanding it to all items. If the status is not in the list, reject it with a clear
+message (e.g. "Unknown status '<value>'. Valid statuses: …") and do not apply any
+dispositions. Never expand an invalid status silently.
+
 Wait for the user's reply.
 
 ---
@@ -124,8 +131,10 @@ For each item (in ledger order), apply the chosen status:
    - Move = copy content to new path + delete from old path. Do not leave a copy in inbox.
    - If the move fails: warn ("Failed to move <filename>: <error>"), leave the file in
      inbox with updated frontmatter, and continue. Do not crash.
-5. Atomicity: frontmatter update and move happen together per entry, or neither (on error,
-   roll back the frontmatter edit if possible).
+5. Best-effort per-entry consistency: set the frontmatter first, then move the file. If the
+   move fails after the frontmatter edit, attempt to restore the original frontmatter and
+   record the entry as failed in the summary. This is a best-effort recovery, not a
+   transactional guarantee.
 
 ---
 
@@ -147,7 +156,9 @@ After all items are processed, return a JSON block:
 ```
 
 `triaged[]` contains one entry per successfully moved item (skipped/errored items are
-excluded). `ledger_path` is `null` (the triager does not write a separate ledger file).
+excluded). `ledger_path` is `null` because the triager presents the ledger inline and
+writes no separate ledger file (the key is reserved for a future extension that persists
+the ledger to disk).
 
 Also print an end-of-run summary:
 
@@ -169,6 +180,7 @@ Triage complete: <N> items processed.
 | Config absent                | Fall back to `vault-feed.example.yaml`; warn if neither |
 | Inbox empty                  | Exit cleanly with message                               |
 | Malformed frontmatter        | Warn, skip file, continue                               |
+| Entry status ≠ inbox         | Skip AND note in run summary (filename + actual status) |
 | Invalid scripted status      | Warn, skip that item, continue                          |
 | File move failure            | Warn, leave in inbox, continue                          |
 | triaged/ dir absent          | Create it before moving                                 |
@@ -194,6 +206,14 @@ When the caller passes `scripted-dispositions: [<status1>, <status2>, ...]`:
 3. Generate `decision_reason` automatically for each item (see Step 4.2 above).
 4. Write through all dispositions immediately.
 5. Return the JSON result.
+
+**Count-mismatch handling (defensive):**
+- If the list has **fewer** entries than ledger items: apply the dispositions given (by
+  index), leave the unmatched items unprocessed in inbox, and warn — naming each unprocessed
+  item (e.g. "No disposition provided for: <filename>, <filename>. Left in inbox.").
+- If the list has **more** entries than ledger items: apply by index up to the last item,
+  ignore any excess entries, and warn (e.g. "X extra dispositions ignored (more supplied
+  than items in ledger).").
 
 The ledger table + recommendation block are still printed (for transparency), but no user
 input is requested.
