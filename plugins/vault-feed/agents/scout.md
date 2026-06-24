@@ -86,7 +86,9 @@ From each successfully fetched source, extract a list of items. Each item must h
 
 For `type: atom` / `type: rss`: parse the XML feed (entries/items) for these fields.
 For `type: scrape`: parse the HTML index for links and their published dates; excerpt
-from the linked page content if the index does not include one.
+from the linked page content if the index does not include one. Convert any parsed
+publication date to epoch seconds before populating `published_epoch`, so the
+at/older-than-`last_seen` dedup check is consistent across all source types.
 
 ### 3c. Apply dedup
 
@@ -111,13 +113,12 @@ You are a significance filter for a curated feed reader.
 User interests (the ONLY yardstick):
 {interests}
 
-For each item below, assign ONE bucket:
+Bucket definitions — apply these EXACTLY as written in significance.md
+(fallback: significance.example.md). Do NOT tighten or restate them:
 
-actionable — changes a capability the user depends on, OR is directly applicable to
-  a tracked topic in their interests. To be actionable, you must be able to name
-  BOTH: (a) a concrete next step (test / integrate / read-and-cite / replace /
-  amend) AND (b) a specific target in their stated interests. If you cannot name
-  both — it is NOT actionable; prefer news-tier.
+actionable — changes a capability the user depends on, OR is directly applicable
+  to a tracked topic in their interests. Either path is sufficient; no additional
+  gate is applied.
 
 news-tier — real signal, no immediate action. Industry direction, a tracked tool's
   non-actionable release note, a direction-of-travel piece. Worth one digest
@@ -126,9 +127,10 @@ news-tier — real signal, no immediate action. Industry direction, a tracked to
 reject — benchmark posturing, funding rounds, wrong-tool features, out-of-domain
   topics, marketing case studies, hype with no capability change.
 
-Bias: when in doubt between actionable and news-tier, choose news-tier. The inbox
-must stay triage-able in one sitting. Do not over-fit every news item to the
-user's interests.
+Tie-breaker (genuine uncertainty only): if an item sits genuinely on the fence
+between actionable and news-tier — neither path in the actionable definition
+clearly applies — prefer news-tier. The inbox must stay triage-able in one
+sitting. Do not over-fit every news item to the user's interests.
 
 Bucket token vocabulary (LOWERCASE, exact):
   actionable | news-tier | reject
@@ -141,7 +143,8 @@ Items:
 ```
 
 Parse the JSON. If parsing fails, retry once with "output strict JSON only" reinforcement.
-If the retry also fails, log the item as `failed` in the source slug and continue.
+If the retry also fails, record the slug(s) of the item(s) in that failed batch in
+`failed[]` (not all sources globally, not silently dropped) and continue.
 
 Route by bucket:
 - `actionable` → build a full inbox-entry object (see schema below).
@@ -184,8 +187,7 @@ to write the inbox file):
 }
 ```
 
-`date_captured` is the run date (today), not the publication date, unless config
-`timezone_offset_hours` would shift the day — in that case adjust accordingly.
+`date_captured` is the user's local "today": UTC date shifted by config `timezone_offset_hours`.
 
 ---
 
@@ -229,7 +231,7 @@ Notes:
 | Fetch error (any source)        | Add slug to `failed[]`; continue to next source        |
 | Feed parse error                | Add slug to `failed[]`; continue                       |
 | Filter JSON parse (first try)   | Retry with "strict JSON only" reinforcement            |
-| Filter JSON parse (second try)  | Log item under the source slug in `failed[]`; continue |
+| Filter JSON parse (second try)  | Record the slug(s) of the failed-batch item(s) in `failed[]`; continue |
 | Config file absent              | Fall back to `vault-feed.example.yaml`                 |
 | Feeds file absent               | Fall back to `feeds.starter.yaml`                      |
 | State file absent               | Treat as `{}`; all items fresh                         |
