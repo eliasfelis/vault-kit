@@ -119,7 +119,7 @@ sources:
     page_url: https://ericmjl.github.io/blog/
     feed_url: https://ericmjl.github.io/blog.xml
     type: atom
-    notes: Canonical feed is blog.xml (not /blog/feed.xml or /feed.xml).
+    notes: Canonical feed is blog.xml.
 
   # GitHub releases (tier "gh" — high signal for tooling)
   - slug: gh-mcp-servers
