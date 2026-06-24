@@ -11,7 +11,14 @@ case "$cmd" in
   write)
     slug="$3"; epoch="$4"; outcome="$5"
     mkdir -p "$dir"; [ -f "$state" ] || echo '{}' > "$state"
-    perl -0777 -i -pe 'BEGIN{($s,$e,$o)=splice(@ARGV,0,3)} s/\s*\}\s*$//; my $sep = /\{\s*$/ ? "" : ","; $_ .= "$sep\"$s\":{\"last_seen\":$e,\"outcome\":\"$o\"}}\n"' "$slug" "$epoch" "$outcome" "$state"
+    perl -0777 -i -ne '
+      BEGIN{($s,$e,$o)=splice(@ARGV,0,3)}
+      my %h;
+      while(/"([^"]+)"\s*:\s*\{\s*"last_seen"\s*:\s*(\d+)\s*,\s*"outcome"\s*:\s*"(\w+)"\s*\}/g){ $h{$1}=[$2,$3] }
+      $h{$s}=[$e,$o];
+      my @p = map { "\"$_\":{\"last_seen\":$h{$_}[0],\"outcome\":\"$h{$_}[1]\"}" } sort keys %h;
+      print "{".join(",",@p)."}\n";
+    ' "$slug" "$epoch" "$outcome" "$state"
     ;;
   summary)
     [ -f "$state" ] || { echo "ok=0 failed=0 failed_slugs="; exit 0; }
