@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # leak-audit.sh - publish gate: fail if any scanned file matches a forbidden pattern.
-# Usage: leak-audit.sh --path P [--pattern-file F] [--extra-patterns X] [--exclude REGEX]
+# Usage: leak-audit.sh --path P [--pattern-file F] [--extra-patterns X] [--exclude REGEX] [--tracked-only]
 # exit 0 clean / 1 leak(s) or unreadable file(s) / 2 a named pattern file is missing or holds an invalid regex / 64 bad usage.
+# --tracked-only enumerates `git ls-files` instead of a filesystem walk: gitignored scratch is
+# never scanned (no fragile --exclude for it) and ALL tracked files are checked, not an extension
+# allowlist -> fail-closed by coverage. Requires --path to be (inside) a git repo.
 # Scanner is perl (PCRE) so the existing .NET-style patterns (\b, \d, (?:...)) work unchanged.
 set -uo pipefail
 
@@ -10,6 +13,7 @@ path=""
 pattern_file="$script_dir/leak-patterns.txt"
 extra_patterns=""
 exclude='\.git/'
+tracked_only=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -17,6 +21,7 @@ while [ $# -gt 0 ]; do
     --pattern-file)   [ $# -ge 2 ] || { echo "ERROR: --pattern-file needs a value" >&2; exit 64; }; pattern_file="$2"; shift 2 ;;
     --extra-patterns) [ $# -ge 2 ] || { echo "ERROR: --extra-patterns needs a value" >&2; exit 64; }; extra_patterns="$2"; shift 2 ;;
     --exclude)        [ $# -ge 2 ] || { echo "ERROR: --exclude needs a value" >&2; exit 64; }; exclude="$2"; shift 2 ;;
+    --tracked-only)   tracked_only=true; shift ;;
     *) echo "unknown arg: $1" >&2; exit 64 ;;
   esac
 done
@@ -80,7 +85,19 @@ if [ -f "$path" ]; then
   printf '%s\n' "$path" > "$filelist"
 else
   allfiles="$(mktemp)"
-  enumerate "$path" > "$allfiles" || true
+  if [ "$tracked_only" = true ]; then
+    if ! git -C "$path" rev-parse --git-dir >/dev/null 2>&1; then
+      echo "ERROR: --tracked-only requires a git repo at: $path" >&2
+      rm -f "$allfiles"; exit 2
+    fi
+    # ls-files paths are repo-relative; prefix the repo path so perl can open them.
+    base="${path%/}"
+    git -C "$path" ls-files 2>/dev/null | while IFS= read -r rel; do
+      [ -n "$rel" ] && printf '%s/%s\n' "$base" "$rel"
+    done > "$allfiles" || true
+  else
+    enumerate "$path" > "$allfiles" || true
+  fi
   total=$(wc -l < "$allfiles" | tr -d '[:space:]')
   if [ -n "$exclude" ]; then
     grep -vE "$exclude" "$allfiles" > "$filelist" || true
