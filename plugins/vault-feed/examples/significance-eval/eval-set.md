@@ -59,4 +59,4 @@ Excerpt: "Cosmetic changelog, no API/automation surface…"
 Why: A tracked tool, but no actionable surface — a line in the digest.
 
 ## Pass bar
-Of 11, expected 5 ACTIONABLE / 3 NEWS / 3 REJECT. The filter must match ≥80% (≥9/11).
+Of 11, expected 4 ACTIONABLE / 2 NEWS / 5 REJECT. The filter must match ≥80% (≥9/11).
