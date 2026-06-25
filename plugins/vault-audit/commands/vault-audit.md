@@ -318,13 +318,12 @@ Field descriptions:
 - `schema`: always the literal string `"vault-audit/findings@1"` — version sentinel for consumers.
 - `ts`: the `{TS}` value computed in Step 2 (e.g. `"2026-05-18-1430"`).
 - `vault_root`: `cfg.vault.root` from the rules pack — informational only; no consumer trusts it as a resolved path.
-- `mode`: the agent run mode — `"vault-only"` (this file is only ever written in vault-only mode, per invariant 1).
+- `mode`: the agent run mode at time of write — always `"vault-only"` here because the dry-run guard prevents writes in any other mode (invariant 1).
 - `judge_findings`: the Step 8 `judge.findings` array verbatim; each item has keys `{id, severity, rule, evidence, suggested_action, related_files}`. Use `[]` if Judge did not run or returned no findings.
 - `linter_requires_decision`: the Step 8 `linter.requires_decision` array verbatim; each item has keys `{category, path, issue, suggested_action}`. Use `[]` if Linter did not run or returned no requires-decision items.
 
-Notes: `vault_root` is informational (may be the literal `"."`); no consumer trusts it
-as a resolved path. Stage only this file with an explicit pathspec if anything is
-committed; it normally stays an untracked artefact in `.vault-audit/` (gitignored).
+Notes: Stage only this file with an explicit pathspec if anything is committed; it
+normally stays an untracked artefact in `.vault-audit/` (gitignored).
 
 ### Step 10: Release lock + final user message
 
