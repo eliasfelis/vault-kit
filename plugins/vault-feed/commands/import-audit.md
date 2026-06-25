@@ -21,8 +21,9 @@ Glob `<audit.findings_dir>/findings-*.json`. If none → print
 (fail-soft, never an error). Otherwise pick the newest **by mtime** (not by name, so a
 `-2` counter suffix never mis-sorts).
 
-Parse it. If `schema` is absent or its major tag is not `vault-audit/findings@1` →
-print `Refusing: unknown findings schema "<schema>".` and exit. If both
+Parse it. If `schema` is absent → print `Refusing: findings file has no schema field.`
+and exit. If its major tag is not `vault-audit/findings@1` → print
+`Refusing: unknown findings schema "<schema>".` and exit. If both
 `judge_findings` and `linter_requires_decision` are empty → print `Nothing to import.`
 and exit clean.
 
@@ -121,9 +122,12 @@ Print:
 Import complete — <date>
   Imported: <count written>   to <paths.inbox>/
   Skipped (already seen): <count deduped>
+  Filtered (memory-scope): <count of memory-cluster items skipped in Step 4>
   Source: <the findings file path>
 ```
-Never silent: if 0 imported because all were dups, say so explicitly.
+Never silent: if 0 imported because all were dups, say so explicitly; the
+memory-scope filtered count is surfaced here too (fail-soft ≠ silent), and the
+`Filtered (memory-scope)` line may be omitted when that count is 0.
 
 ## Error handling
 
