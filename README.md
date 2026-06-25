@@ -51,6 +51,8 @@ See [`plugins/vault-feed/README.md`](plugins/vault-feed/README.md) for the full 
 /plugin install vault-feed@vault-kit
 ```
 
+**Bridge:** vault-audit findings flow into vault-feed's triage backlog via `/vault-feed:import-audit` — so audit issues and feed items share one disposition ledger.
+
 ---
 
 ## Use it freely

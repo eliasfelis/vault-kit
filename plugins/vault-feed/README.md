@@ -112,6 +112,21 @@ All paths come from your config (defaults shown — see `vault-feed.example.yaml
 
 ---
 
+## Bridge: import audit findings
+
+If you also run `vault-audit`, pull its findings into the same triage backlog:
+
+1. Run `/vault-audit` (vault-only) — it writes `.vault-audit/findings-<TS>.json`.
+2. Run `/vault-feed:import-audit` — each judge finding and linter requires-decision
+   item becomes a `type: audit-finding` inbox entry (deduped against what you've
+   already triaged, so a re-audit never re-floods or resurrects a disposed item).
+3. Run `/vault-feed:triage` — dispose audit findings and feed items in one ledger.
+
+Config: `audit.findings_dir` (default `.vault-audit`) must match vault-audit's
+`report.dir`. Memory-scope findings are not bridged (off by default anyway).
+
+---
+
 ## Requirements
 
 Runs on **Windows (via Git Bash), macOS, and Linux**. Needs `bash`, `git`, and `perl` — all bundled with Git for Windows, preinstalled on macOS/Linux. No PowerShell required.
