@@ -20,3 +20,6 @@ paths:
 statuses: ["adopt", "park", "reject", "experiment"]
 
 timezone_offset_hours: 0          # report timestamps only
+
+audit:                              # bridge: where vault-audit writes findings-<TS>.json
+  findings_dir: ".vault-audit"      # match vault-audit's report.dir if you customized it
