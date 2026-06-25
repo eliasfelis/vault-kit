@@ -19,6 +19,14 @@
       "evidence": "reference/pinned-map.md frontmatter date is well past the window.",
       "suggested_action": "Review reference/pinned-map.md and refresh or re-pin it.",
       "related_files": ["reference/pinned-map.md"]
+    },
+    {
+      "id": "one-source-of-truth-contested",
+      "severity": "critical",
+      "rule": "Each fact has exactly one source of truth.",
+      "evidence": "projects/alpha/STATE.md and projects/beta/STATE.md both claim ownership of the same milestone.",
+      "suggested_action": "Mark one as contested and reconcile to a single owner.",
+      "related_files": ["projects/alpha/STATE.md", "projects/beta/STATE.md"]
     }
   ],
   "linter_requires_decision": [
