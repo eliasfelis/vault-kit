@@ -1,7 +1,7 @@
 {
   "name": "vault-audit",
   "description": "Audit a Claude-Code markdown knowledge vault against its own declared rules.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": { "name": "eliasfelis" },
   "license": "MIT",
   "homepage": "https://github.com/eliasfelis/vault-kit"

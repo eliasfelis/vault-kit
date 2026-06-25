@@ -281,6 +281,51 @@ date: {YYYY-MM-DD from TS}
 
 Note on git-mv: if the summary file (or any audit file) is later relocated with `git mv` after editing, edits to the moved-from path stay unstaged (status `RM`). Always `git add` the NEW path after a `git mv`-then-edit sequence.
 
+### Step 9b: Emit the machine-readable findings file (bridge contract)
+
+Additionally write `<cfg.report.dir>/findings-{TS}.json` for downstream consumers
+(e.g. `/vault-feed:import-audit`). This is a serialization of data already in hand
+from Step 8 — no new detection.
+
+**Three invariants (do NOT copy the Step 9 summary-write pattern blindly — it differs):**
+
+1. **Dry-run guard — explicit.** Write this file ONLY when `mode == vault-only`. If
+   `--dry-run`, skip it entirely (the summary above is written in every mode, but the
+   findings file must NOT be, or a preview leaks a real-looking contract file).
+2. **Before lock-release.** This write is part of Step 9, so it completes while the
+   lock (Step 4) is still held — Step 10 releases it. A consumer takes no audit lock,
+   so a half-written file must never be visible as "newest".
+3. **No-overwrite.** If `<cfg.report.dir>/findings-{TS}.json` already exists, write
+   `findings-{TS}-2.json` (then `-3`, …) instead of overwriting. (Two runs sharing a
+   minute-granular `{TS}` is rare — the lock serializes runs that each far exceed a
+   minute — but never silently overwrite a contract file.)
+
+Content (substitute placeholders; `judge_findings` and `linter_requires_decision` are
+the Step 8 arrays verbatim — empty `[]` for any agent that did not run):
+
+```json
+{
+  "schema": "vault-audit/findings@1",
+  "ts": "2026-05-18-1430",
+  "vault_root": ".",
+  "mode": "vault-only",
+  "judge_findings": [],
+  "linter_requires_decision": []
+}
+```
+
+Field descriptions:
+- `schema`: always the literal string `"vault-audit/findings@1"` — version sentinel for consumers.
+- `ts`: the `{TS}` value computed in Step 2 (e.g. `"2026-05-18-1430"`).
+- `vault_root`: `cfg.vault.root` from the rules pack — informational only; no consumer trusts it as a resolved path.
+- `mode`: the agent run mode — `"vault-only"` (this file is only ever written in vault-only mode, per invariant 1).
+- `judge_findings`: the Step 8 `judge.findings` array verbatim; each item has keys `{id, severity, rule, evidence, suggested_action, related_files}`. Use `[]` if Judge did not run or returned no findings.
+- `linter_requires_decision`: the Step 8 `linter.requires_decision` array verbatim; each item has keys `{category, path, issue, suggested_action}`. Use `[]` if Linter did not run or returned no requires-decision items.
+
+Notes: `vault_root` is informational (may be the literal `"."`); no consumer trusts it
+as a resolved path. Stage only this file with an explicit pathspec if anything is
+committed; it normally stays an untracked artefact in `.vault-audit/` (gitignored).
+
 ### Step 10: Release lock + final user message
 
 Release the lock:

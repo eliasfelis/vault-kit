@@ -70,6 +70,14 @@ Flags may combine: `--linter-only --dry-run`.
 
 Neither agent touches your main branch.
 
+### Bridge to vault-feed
+
+In `vault-only` mode the run also writes `<report.dir>/findings-<TS>.json` — a
+machine-readable list of the judge's findings and the linter's requires-decision
+items. `vault-feed`'s `/vault-feed:import-audit` reads this file to pull audit
+findings into its triage backlog. Nothing else consumes it; if you don't use
+vault-feed, ignore it (it lives in the gitignored `.vault-audit/`).
+
 ---
 
 ## Platforms
