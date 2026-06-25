@@ -1,0 +1,38 @@
+{
+  "schema": "vault-audit/findings@1",
+  "ts": "2026-01-01-1200",
+  "vault_root": ".",
+  "mode": "vault-only",
+  "judge_findings": [
+    {
+      "id": "declared-folders-vs-actual",
+      "severity": "warning",
+      "rule": "Declared folders in the constitution must exist on disk.",
+      "evidence": "CLAUDE.md lists `archive/` but no such directory exists.",
+      "suggested_action": "Create archive/ or drop it from the declared folder list.",
+      "related_files": ["CLAUDE.md"]
+    },
+    {
+      "id": "stale-pinned-doc",
+      "severity": "suggestion",
+      "rule": "Pinned reference docs should be refreshed within the declared window.",
+      "evidence": "reference/pinned-map.md frontmatter date is well past the window.",
+      "suggested_action": "Review reference/pinned-map.md and refresh or re-pin it.",
+      "related_files": ["reference/pinned-map.md"]
+    }
+  ],
+  "linter_requires_decision": [
+    {
+      "category": "naming",
+      "path": "notes/BadName.md",
+      "issue": "Filename does not match the declared naming pattern.",
+      "suggested_action": "Rename to the dated convention, e.g. `note bad-name 2026-01-01.md`."
+    },
+    {
+      "category": "duplicates",
+      "path": "projects/alpha/STATE.md",
+      "issue": "Basename STATE.md appears in two or more directories.",
+      "suggested_action": "Confirm both are intentional or consolidate them."
+    }
+  ]
+}

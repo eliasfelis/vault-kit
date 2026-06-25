@@ -1,0 +1,24 @@
+{
+  "schema": "vault-audit/findings@1",
+  "ts": "2026-01-02-1200",
+  "vault_root": ".",
+  "mode": "vault-only",
+  "judge_findings": [
+    {
+      "id": "declared-folders-vs-actual",
+      "severity": "warning",
+      "rule": "Declared folders in the constitution must exist on disk.",
+      "evidence": "CLAUDE.md now lists `archive/` AND `scratch/`; neither exists.",
+      "suggested_action": "Create or drop them from the declared list.",
+      "related_files": ["CLAUDE.md", "scratch"]
+    }
+  ],
+  "linter_requires_decision": [
+    {
+      "category": "naming",
+      "path": "notes/BadName.md",
+      "issue": "Filename does not match the declared naming pattern.",
+      "suggested_action": "Rename to the dated convention."
+    }
+  ]
+}
