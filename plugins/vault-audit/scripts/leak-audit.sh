@@ -91,8 +91,10 @@ else
       rm -f "$allfiles"; exit 2
     fi
     # ls-files paths are repo-relative; prefix the repo path so perl can open them.
+    # core.quotePath=false: git C-quotes non-ASCII paths by default, which would make
+    # perl try to open the QUOTED string -> false "unreadable" on clean non-ASCII names.
     base="${path%/}"
-    git -C "$path" ls-files 2>/dev/null | while IFS= read -r rel; do
+    git -C "$path" -c core.quotePath=false ls-files 2>/dev/null | while IFS= read -r rel; do
       [ -n "$rel" ] && printf '%s/%s\n' "$base" "$rel"
     done > "$allfiles" || true
   else
@@ -112,28 +114,58 @@ else
     echo "ERROR: --exclude matched all $total enumerated files - nothing scanned, refusing to certify" >&2
     exit 2
   fi
+  # Zero files AT ALL is equally non-certifiable (empty dir, no matching extensions,
+  # --tracked-only with nothing tracked): a gate that scanned nothing knows nothing.
+  if [ "${kept:-0}" -eq 0 ]; then
+    echo "ERROR: no files to scan under: $path - refusing to certify (0 files)" >&2
+    exit 2
+  fi
 fi
 
 # Scan with perl (PCRE). An enumerated-but-unreadable file is surfaced as FAILED and fails the
 # gate (fail-soft != silent) — it must never be silently skipped into a false 'clean'.
+# Also checks each FILENAME (path relative to the scan root — an absolute prefix such as
+# a Windows user-profile dir must not trip the user-profile pattern on every file): instance
+# literals leak via paths too, not just content. NUL-containing files (binary, or
+# UTF-16 — the PowerShell `>` default encoding) cannot be line-matched: skipped VISIBLY.
+if [ -f "$path" ]; then dirbase=""; else dirbase="${path%/}"; fi
 perl -e '
-  my ($pf, $lf) = @ARGV;
+  my ($pf, $lf, $base) = @ARGV;
   open(my $ph, "<", $pf) or die "patterns: $!";
   my @pats = grep { length } map { my $x = $_; $x =~ s/\r?\n$//; $x =~ s/^\s+//; $x =~ s/\s+$//; $x } <$ph>;
   close($ph);
   open(my $lh, "<", $lf) or die "filelist: $!";
   my $hits = 0;
   my $unreadable = 0;
-  while (my $file = <$lh>) {
+  my $scanned = 0;
+  my $binary = 0;
+  FILE: while (my $file = <$lh>) {
     $file =~ s/\r?\n$//;
     next unless length $file;
+    my $rel = $file;
+    if (length $base) { $rel =~ s/^\Q$base\E\/*//; } else { $rel =~ s{^.*/}{}; }
+    for my $p (@pats) {
+      if ($rel =~ /$p/) {
+        print "LEAK (filename) $file\n";
+        $hits++;
+        last;
+      }
+    }
     my $fh;
     if (!open($fh, "<", $file)) {
       print "FAILED: cannot read $file: $!\n";
       $unreadable++;
       next;
     }
+    $scanned++;
     while (my $line = <$fh>) {
+      if ($. == 1 && $line =~ /\x00/) {
+        print "SKIP (binary/UTF-16, not line-scanned) $file\n";
+        $binary++;
+        $scanned--;
+        close($fh);
+        next FILE;
+      }
       for my $p (@pats) {
         if ($line =~ /$p/) {
           my $t = $line; $t =~ s/\r?\n$//;
@@ -148,5 +180,6 @@ perl -e '
   close($lh);
   if ($hits > 0)       { print "FAIL: $hits leak(s)\n"; exit 1; }
   if ($unreadable > 0) { print "FAIL: $unreadable unreadable file(s) - cannot certify clean\n"; exit 1; }
-  print "OK: no leaks\n"; exit 0;
-' "$combined" "$filelist"
+  my $note = $binary ? ", $binary binary/UTF-16 file(s) skipped" : "";
+  print "OK: no leaks ($scanned file(s) scanned$note)\n"; exit 0;
+' "$combined" "$filelist" "$dirbase"
