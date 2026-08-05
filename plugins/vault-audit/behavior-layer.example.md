@@ -1,6 +1,8 @@
 # Behavior layer (example)
 
-This file is injected verbatim into your assistant's context at the start of every session (wire it via a SessionStart hook — see `hooks.example.json`). It makes a small set of reflexes persistent, so the assistant reliably catches the same things every time.
+This file is injected verbatim into your assistant's context at the start of every session. It makes a small set of reflexes persistent, so the assistant reliably catches the same things every time.
+
+**To install it:** copy this file into your project as `behavior-layer.md` and add one line — `@behavior-layer.md` — to your `CLAUDE.md`, so it loads verbatim every session. Do **not** deliver it through a SessionStart hook that prints the file: hook stdout is capped (truncation measured at roughly 2 KB) and the cut is silent and mid-file, so most of the reflexes below would never reach the session. Verbatim delivery is a requirement, not a preference — a half-delivered behavior layer looks installed and is not.
 
 These reflexes pair with `PRINCIPLES.md`: the principles document the method, and the reflexes coach those same principles in-the-moment — reinforced while you work, not only caught after the fact by an audit.
 

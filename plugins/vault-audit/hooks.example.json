@@ -1,18 +1,8 @@
 {
   "_comment": "Example Claude-Code settings.json hooks fragment. JSON has no comments, so notes live in _comment keys (Claude Code ignores unknown keys). Merge the hooks block into your own settings.json.",
+  "_comment_behavior_layer": "The behavior layer is NOT delivered by a hook, and this is deliberate. Load it from your instructions file instead: copy `behavior-layer.example.md` into your project as `behavior-layer.md` and add a single line `@behavior-layer.md` to your CLAUDE.md (or paste the layer inline if your tool has no import syntax). WHY NOT A HOOK: a SessionStart hook that prints the file (`cat behavior-layer.md`) looks like it works, but hook stdout is capped — we measured truncation at roughly 2 KB — and the cut is SILENT, mid-file, with no warning. A behavior layer is a few KB by nature, so the hook route delivers a fraction of it and quietly drops the rest of your reflexes. An instructions-file import is loaded verbatim, with no cap. Do not re-add a SessionStart hook here for this purpose.",
   "hooks": {
-    "SessionStart": [
-      {
-        "_comment": "Copy `behavior-layer.example.md` into your own vault as `behavior-layer.md` (e.g. at your project root) and point this command at it. `${CLAUDE_PROJECT_DIR}` resolves to your project root at runtime. `cat` runs on macOS/Linux natively and on Windows via Git Bash (already required by this tool). If your file has a UTF-8 BOM, strip it once so the first injected line isn't corrupted.",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cat \"${CLAUDE_PROJECT_DIR}/behavior-layer.md\""
-          }
-        ]
-      }
-    ],
-    "_comment_PreToolUse": "A PreToolUse command hook can validate a tool argument against an allowlist and BLOCK the call (exit non-zero) before it runs — e.g. guarding a tag / label set so only an approved vocabulary is ever written. Point its command at your own validator script. Shown here as a commented pattern, not active.",
+    "_comment_PreToolUse": "A PreToolUse command hook can validate a tool argument against an allowlist and BLOCK the call (exit non-zero) before it runs — e.g. guarding a tag / label set so only an approved vocabulary is ever written. Point its command at your own validator script. Shown here as a commented pattern, not active. Hooks are the right tool for GATING a call; they are the wrong tool for injecting a large block of text.",
     "_PreToolUse_pattern": [
       {
         "matcher": "<your-tool-name>",

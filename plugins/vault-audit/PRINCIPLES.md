@@ -85,6 +85,6 @@ Three layers, one set of conventions:
 
 - **The starter rules pack ENCODES them.** `rules.starter.yaml` and `rules.starter.md` ship these conventions as the auditor's out-of-box defaults — the opinionated, proven set rather than a blank schema.
 - **The auditor ENFORCES them.** The two agents — `linter` (the deterministic fixer: broken refs, frontmatter, naming, duplicates, staleness) and `judge` (the judgment reviewer: anti-patterns and declaration-vs-reality drift) — check the live vault against the rules pack and surface what has drifted.
-- **The behavior-layer COACHES them.** `behavior-layer.example.md` carries the same principles into the session as in-the-moment reflexes, so the conventions are reinforced while you work — not only caught after the fact by an audit.
+- **The behavior-layer COACHES them.** `behavior-layer.example.md` carries the same principles into the session as in-the-moment reflexes, so the conventions are reinforced while you work — not only caught after the fact by an audit. **Delivery is part of the design:** load it from the instructions file your tool reads every session (one `@behavior-layer.md` line), never through a hook that prints it. Hook stdout is capped and truncates silently, and a coaching layer missing its second half fails in the worst way available — it looks installed.
 
 Encode the method, enforce it mechanically, coach it in the moment — so the approach outlives any single vault.

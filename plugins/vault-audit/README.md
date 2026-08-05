@@ -33,7 +33,9 @@ Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.
 
 **Principles** — the methodology behind the starter rules: [`PRINCIPLES.md`](PRINCIPLES.md).
 
-**Behavior layer** — optional in-session coaching reflexes: [`behavior-layer.example.md`](behavior-layer.example.md) + [`hooks.example.json`](hooks.example.json) (wire as a SessionStart hook).
+**Behavior layer** — optional in-session coaching reflexes: [`behavior-layer.example.md`](behavior-layer.example.md). Copy it into your project as `behavior-layer.md` and load it **from your instructions file** — one line, `@behavior-layer.md`, in your `CLAUDE.md` (or paste the layer inline if your tool has no import syntax). It is then loaded verbatim, every session.
+
+> **Do not deliver it through a SessionStart hook that prints the file.** It looks like it works, but hook stdout is capped — we measured truncation at roughly 2 KB — and the cut is silent and mid-file. A behavior layer is a few KB by nature (the example here is over 6 KB), so the hook route quietly drops most of your reflexes with no warning. [`hooks.example.json`](hooks.example.json) carries a different hook pattern — an allowlist guard that **blocks** a tool call — which is what hooks are actually good for.
 
 | Block | What it controls |
 |---|---|

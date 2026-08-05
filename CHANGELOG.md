@@ -13,6 +13,31 @@ convention).
 
 ---
 
+## vault-audit 0.4.1 — 2026-08-05
+
+**Fixes a documented install step that silently delivered a third of the behavior layer.**
+
+### Fixed
+- **Behavior-layer delivery.** Every documented route pointed at a SessionStart
+  hook that prints the file (`cat behavior-layer.md`). Hook stdout is capped —
+  truncation measured at roughly 2 KB — and the cut is silent and mid-file,
+  while `behavior-layer.example.md` is over 6 KB. Anyone following the
+  instructions received about the first third of their reflexes and no warning
+  that the rest was dropped: the worst available failure mode, because it looks
+  installed. The layer is now loaded from the instructions file the assistant
+  reads every session (one `@behavior-layer.md` line in `CLAUDE.md`), which is
+  verbatim and uncapped. Corrected in all four places that carried the old
+  route — `hooks.example.json`, `plugins/vault-audit/README.md`, the root
+  `README.md`, and the header of `behavior-layer.example.md` itself — plus a
+  delivery clause in `PRINCIPLES.md`, since delivery is part of the design
+  rather than a footnote.
+- `hooks.example.json` no longer ships a `SessionStart` block at all. The
+  reason it is absent is recorded in the file so it does not get re-added; the
+  `PreToolUse` allowlist-guard pattern stays, because gating a tool call is
+  what hooks are genuinely good for, unlike injecting a large block of text.
+
+---
+
 ## vault-audit 0.4.0 — 2026-08-05
 
 **The publish gate goes user-facing + repo CI.**
