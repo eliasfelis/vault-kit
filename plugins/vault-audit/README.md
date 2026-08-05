@@ -4,6 +4,7 @@ Audits a Claude-Code Markdown vault against its own declared rules. Two agents, 
 
 - **Linter** — deterministic fixer (broken refs, frontmatter, naming, duplicates, staleness). Autofixes on a throwaway branch; surfaces ambiguous items for decision.
 - **Judge** — judgment reviewer (anti-patterns, declaration-vs-reality drift). Writes a standalone report, never edits files.
+- **Leak gate** — `/vault-audit:leak-scan`: on-demand pre-publish scan for secrets and instance literals. Read-only.
 
 ---
 
@@ -45,6 +46,7 @@ Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.
 | `duplicates` | Flags files with identical basenames across the tree. Supports `exempt_basenames`. |
 | `staleness` | Per-glob rules: checks that a frontmatter date field is within `max_age_days`. |
 | `memory` | Optional memory-folder hygiene (off by default). Set `enabled: true` and `path` to your Claude-Code memory folder. |
+| `leak_scan` | Defaults for `/vault-audit:leak-scan`: private `extra_patterns` file, `tracked_only`, `exclude`. |
 | `report.dir` | Where the Judge writes its standalone report (default: `.vault-audit`). |
 
 The judgment checks (`anti_patterns` and `drift_checks`) live in `rules.example.md`. Copy it to `rules.md` and replace the examples with your own declared rules.
@@ -77,6 +79,22 @@ machine-readable list of the judge's findings and the linter's requires-decision
 items. `vault-feed`'s `/vault-feed:import-audit` reads this file to pull audit
 findings into its triage backlog. Nothing else consumes it; if you don't use
 vault-feed, ignore it (it lives in the gitignored `.vault-audit/`).
+
+---
+
+## Leak gate — /vault-audit:leak-scan
+
+Run the publish gate on demand against any path (default: your vault root from the rules pack):
+
+```
+/vault-audit:leak-scan --path . --tracked-only
+```
+
+Two pattern layers: the shipped generic set ([`scripts/leak-patterns.txt`](scripts/leak-patterns.txt) — credential shapes, user-profile paths) plus an optional **private** file with your instance literals (names, brands, internal codes, hostnames), passed via `--extra-patterns` or the `leak_scan:` block in the rules pack. Keep the private file outside any published repo — that is the whole point of the two-layer design.
+
+Exit contract (fail-loud): `0` clean (with a file count — `OK: no leaks (N file(s) scanned)`) · `1` leak(s) or unreadable file(s) · `2` gate misconfigured or nothing to scan (missing/invalid patterns, empty pattern set, over-broad exclude, zero files — never reported as clean) · `64` usage. `--tracked-only` checks every `git ls-files` entry regardless of extension (fail-closed coverage); the default walk enumerates by a wide extension list. Filenames are matched too, not just content; binary/UTF-16 files are skipped visibly.
+
+Know the limits before trusting a green run: patterns are case-sensitive (`(?i)` your literals), regex metacharacters in a "literal" must be escaped, and every new private pattern file deserves a positive control (plant a literal, expect exit `1`). Full list: the **Limits & discipline** section in [`commands/leak-scan.md`](commands/leak-scan.md).
 
 ---
 

@@ -56,5 +56,10 @@ memory:
   path: ""
   index_file: "MEMORY.md"
 
+leak_scan:                    # defaults for /vault-audit:leak-scan (optional; flags override)
+  extra_patterns: ""          # absolute path to your PRIVATE pattern file - keep it outside any published repo
+  tracked_only: true
+  exclude: '\.git/'
+
 report:
   dir: ".vault-audit"

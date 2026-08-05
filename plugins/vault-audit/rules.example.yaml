@@ -53,5 +53,10 @@ memory:                           # optional — OFF by default
   path: ""                        # absolute path to a Claude-Code memory folder
   index_file: "MEMORY.md"
 
+leak_scan:                        # defaults for /vault-audit:leak-scan (optional; flags override)
+  extra_patterns: ""              # absolute path to your PRIVATE pattern file (outside any published repo)
+  tracked_only: true
+  exclude: '\.git/'
+
 report:
   dir: ".vault-audit"             # where the Judge writes its standalone report
