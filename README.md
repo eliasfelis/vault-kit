@@ -68,7 +68,7 @@ MIT-licensed and provided as-is. Fork it, adapt it, ship it. I built this for my
 
 ## Roadmap
 
-A growing collection. `vault-audit` covers rules-based audit; `vault-feed` delivers the feed-pull + triage flow. Next planned: a git-truth staleness check (frontmatter dates vs actual last-commit dates). More vault tools after that.
+A growing collection. `vault-audit` covers rules-based audit; `vault-feed` delivers the feed-pull + triage flow. Next planned: a persona-overlay engine (audience-specific session overlays you define as markdown files) and a git-truth staleness check for vault-audit (frontmatter dates vs actual last-commit dates). More vault tools after that.
 
 ---
 
