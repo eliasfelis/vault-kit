@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Script syntax (bash -n)
+        run: |
+          set -e
+          for s in plugins/*/scripts/*.sh; do
+            bash -n "$s"
+            echo "OK $s"
+          done
+
+      - name: Leak gate self-test (positive + negative control)
+        run: |
+          set -e
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/dirty.md || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on dirty fixture, got $rc"; exit 1; }
+          bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/clean.md
+
+      - name: Leak gate hardening controls (fail-open vectors stay closed)
+        run: |
+          set -e
+          # planted token is CONCATENATED so this file itself never contains a
+          # contiguous leak-shaped string (the repo self-gate scans this file too)
+          tok='ghp_''abcdefghijklmnopqrstuvwxyz0123456789'
+          d="$(mktemp -d)"
+          # zero files scanned must NOT certify clean
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path "$d" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "expected exit 2 on empty dir, got $rc"; exit 1; }
+          # a leak in a FILENAME (clean content) must be caught
+          touch "$d/$tok.md"
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path "$d" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on filename leak, got $rc"; exit 1; }
+          # a UTF-16 file must be skipped VISIBLY, never silently certified
+          d2="$(mktemp -d)"
+          printf 'Token: %s\n' "$tok" | iconv -f UTF-8 -t UTF-16LE > "$d2/redirected.txt"
+          printf 'plain clean line\n' > "$d2/clean.md"
+          out="$(bash plugins/vault-audit/scripts/leak-audit.sh --path "$d2")"
+          echo "$out" | grep -q 'SKIP (binary/UTF-16' || { echo "expected visible SKIP line, got: $out"; exit 1; }
+
+      - name: Repo self-gate (generic patterns, all tracked files)
+        run: |
+          bash plugins/vault-audit/scripts/leak-audit.sh --path . --tracked-only --exclude '^\./tests/leak-fixture/dirty\.md$'
+
+      - name: feed-state smoke
+        run: |
+          set -e
+          d="$(mktemp -d)"
+          bash plugins/vault-feed/scripts/feed-state.sh write "$d" slug-a 1000 ok
+          bash plugins/vault-feed/scripts/feed-state.sh write "$d" slug-b 2000 failed
+          got="$(bash plugins/vault-feed/scripts/feed-state.sh read "$d" slug-a)"
+          [ "$got" = "1000" ] || { echo "read: expected 1000, got $got"; exit 1; }
+          sum="$(bash plugins/vault-feed/scripts/feed-state.sh summary "$d")"
+          [ "$sum" = "ok=1 failed=1 failed_slugs=slug-b" ] || { echo "summary mismatch: $sum"; exit 1; }
