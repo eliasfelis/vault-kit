@@ -1,5 +1,6 @@
 {
   "name": "vault-kit",
+  "description": "Operational tools for a Claude-Code markdown knowledge vault: rules-based audit (linter + judge) and a curated-feed triage flow.",
   "owner": { "name": "eliasfelis" },
   "plugins": [
     {

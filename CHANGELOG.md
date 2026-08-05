@@ -6,11 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 vault-kit is a marketplace of two plugins that version **independently** — each
-entry notes which plugin and version it covers. Tags on the repo:
-`vault-audit-v0.3.2`, `vault-feed-v0.2.0`, plus the earlier `v0.3.0` / `v0.3.1`
-(bare-named, before the per-plugin tag convention).
+entry notes which plugin and version it covers. Tags on the repo follow the
+per-plugin convention `<plugin>-vX.Y.Z` (the latest per plugin = the newest
+entry below), plus the earlier bare-named `v0.3.0` / `v0.3.1` (before the
+convention).
 
 ---
+
+## vault-audit 0.4.0 — 2026-08-05
+
+**The publish gate goes user-facing + repo CI.**
+
+### Added
+- `/vault-audit:leak-scan` — the leak gate as a command: scan any path (default:
+  your vault root) against the shipped generic patterns plus an optional private
+  `--extra-patterns` file; `--tracked-only` and `--exclude` pass through. Exit
+  codes: `0` clean / `1` leak / `2` misconfigured-or-nothing-scanned, fail-loud.
+  Optional `leak_scan:` defaults block in the rules pack, and a documented
+  **Limits & discipline** list (case-sensitivity, metachar escaping,
+  positive-control ritual) — a gate you over-trust is worse than no gate.
+- GitHub Actions CI (`.github/workflows/ci.yml`): script syntax checks, leak-gate
+  positive/negative self-test, hardening controls (the fail-open vectors below
+  stay closed), repo self-gate (`--tracked-only` over all tracked files),
+  feed-state smoke.
+
+### Hardened (leak-audit.sh — adversarial review before this release)
+- **Zero files scanned now refuses to certify** (exit `2`): an empty dir, an
+  extension-less tree, or `--tracked-only` with nothing tracked used to print
+  `OK: no leaks` having checked nothing.
+- **Filenames are scanned too** (relative to the scan root): an instance literal
+  or credential in a path used to pass a content-only scan.
+- **Binary/UTF-16 files are skipped VISIBLY** (`SKIP (binary/UTF-16…)` + a count
+  in the verdict): a UTF-16 file — PowerShell's `>` default — used to false-clean
+  silently. The clean verdict now always carries the scanned-file count.
+- `--tracked-only` reads `git ls-files` with `core.quotePath=false`: a clean
+  non-ASCII filename used to fail the run as "unreadable".
+
+### Changed
+- Root README: a single **Install** block up top for both plugins (they are two
+  separate installs — adding the marketplace alone installs nothing), plus a
+  "Not using Claude Code?" portability note for other coding agents; the Roadmap
+  names the next planned tool (git-truth staleness check).
+- Marketplace manifest gains a top-level `description` (clears the
+  `claude plugin validate` warning).
+
+_Tag: `vault-audit-v0.4.0`._
 
 ## vault-audit 0.3.2 · vault-feed 0.2.0 — 2026-06-25
 
