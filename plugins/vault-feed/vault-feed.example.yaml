@@ -14,7 +14,7 @@ interests: |                       # the relevance yardstick — the de-id heart
 paths:
   inbox: "feed/inbox"             # actionable entries land here
   triaged: "feed/triaged"         # triager moves them here with a decision
-  digest: "feed/digest"           # news-tier digest, one file per run
+  digest: "feed/digest"           # news-tier digest, one file per date (a same-day re-run appends)
   state: ".vault-feed/runs"       # run-state (dedup + per-source outcome)
 
 statuses: ["adopt", "park", "reject", "experiment"]

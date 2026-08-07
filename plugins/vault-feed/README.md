@@ -23,6 +23,8 @@ Fetches curated feeds, filters each item for relevance to YOUR declared interest
 
 2. Open `vault-feed.yaml` and edit the `interests` field. This is the relevance yardstick the scout uses to decide what is actionable vs. news-tier vs. reject. Everything else has working defaults.
 
+   `/vault-feed:pull` refuses to run while `interests` is still the shipped placeholder — an unedited template scores every source against comment text and fills the inbox with confident noise. Delete the `#` comment lines and the `<angle-bracket>` examples; write plain prose about your stack and the topics you track.
+
 3. Run the setup wizard (shows sources, offers to search for more):
    ```
    /vault-feed:pull --setup
@@ -32,6 +34,10 @@ Fetches curated feeds, filters each item for relevance to YOUR declared interest
    ```
    /vault-feed:pull
    ```
+
+   The first pull of any source takes only its newest few items — it samples what a
+   source is publishing now, it does not import its archive. Every later pull for that
+   source sees everything genuinely new.
 
 5. Triage what landed in your inbox:
    ```
@@ -99,7 +105,7 @@ All paths come from your config (defaults shown — see `vault-feed.example.yaml
 |---|---|
 | `feed/inbox/` | Actionable entries: `<date>-<slug>-<n>.md`. Frontmatter carries `type`, `source`, `title`, `url`, `date_captured`, `status: inbox`, `value`, `effort`, `confidence`, `decision_reason`. |
 | `feed/triaged/` | Entries after `/vault-feed:triage` disposition. Frontmatter `status` field updated in-place. |
-| `feed/digest/` | Per-run digest files (one file per date): `<date>.md`. One paragraph per news-tier item. A second same-day pull overwrites that date's digest. |
+| `feed/digest/` | One digest file per date: `<date>.md`. One paragraph per news-tier item. A second pull on the same day **appends** a `## Later pull — <HH:MM>` section rather than overwriting, so re-running never deletes the morning's digest. |
 | `.vault-feed/runs/` | Per-source run-state (last-seen epoch + outcome). Used to avoid re-surfacing seen items. |
 
 ---
@@ -108,7 +114,7 @@ All paths come from your config (defaults shown — see `vault-feed.example.yaml
 
 `examples/significance-eval/eval-set.md` contains the labelled acceptance set used to calibrate the scout's significance filter. The acceptance bar is **≥ 80% accuracy (≥ 9 of 11 items correctly bucketed)** before the scout spec is considered stable. Review it if you find the bucketing off for your interests — the eval items show the intended boundary between actionable and news-tier.
 
-`examples/demo-inbox/` contains a triage fixture: three pre-built inbox entries you can run `/vault-feed:triage` against without a live pull. Expected dispositions are in `examples/demo-inbox/EXPECTED.md`.
+`examples/demo-inbox/` contains a triage fixture: a set of pre-built inbox entries you can run `/vault-feed:triage` against without a live pull. Expected ledger order and dispositions are in `examples/demo-inbox/EXPECTED.md`.
 
 ---
 
@@ -116,10 +122,14 @@ All paths come from your config (defaults shown — see `vault-feed.example.yaml
 
 If you also run `vault-audit`, pull its findings into the same triage backlog:
 
-1. Run `/vault-audit` (vault-only) — it writes `.vault-audit/findings-<TS>.json`.
+1. Run `/vault-audit:vault-audit` (vault-only) — it writes
+   `.vault-audit/findings-<TS>.json`.
 2. Run `/vault-feed:import-audit` — each judge finding and linter requires-decision
    item becomes a `type: audit-finding` inbox entry (deduped against what you've
    already triaged, so a re-audit never re-floods or resurrects a disposed item).
+   The dedup key is `<origin>|<finding_id>|<instance>` (instance = the finding's
+   `related_files`, comma-joined): re-detecting the same violation is silent, while
+   a *new* violation of a rule you already disposed still comes through.
 3. Run `/vault-feed:triage` — dispose audit findings and feed items in one ledger.
 
 Config: `audit.findings_dir` (default `.vault-audit`) must match vault-audit's

@@ -1,4 +1,8 @@
-# Significance filter (read by the `scout` agent)
+# Significance filter (resolved by `/vault-feed:pull`, applied by the `scout` agent)
+
+> `/vault-feed:pull` reads this file — or your `significance.md` if you have one at the
+> vault root — and inlines its content into the scout's dispatch prompt. The scout has
+> no Bash and never resolves the path itself.
 
 For each fetched item, decide ONE bucket by comparing it to the user's `interests`:
 

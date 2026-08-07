@@ -10,9 +10,15 @@ seen. Then triage them with `/vault-feed:triage` alongside feed items.
 
 ## Step 1 — Resolve config
 
-Read `vault-feed.yaml` (fallback `vault-feed.example.yaml`). Extract `paths.inbox`,
-`paths.triaged`, `timezone_offset_hours`, and `audit.findings_dir` (default
-`.vault-audit`). Never hardcode a path.
+Look for `vault-feed.yaml` at the vault/working root; absent → fall back to
+`"${CLAUDE_PLUGIN_ROOT}/vault-feed.example.yaml"`. If neither exists, STOP with
+`Cannot resolve config: neither vault-feed.yaml nor the bundled
+vault-feed.example.yaml exists.` — an unresolved config means unresolved paths, and
+guessing them would scatter entries somewhere nobody triages.
+
+From the resolved config extract `paths.inbox`, `paths.triaged`,
+`timezone_offset_hours`, and `audit.findings_dir` (default `.vault-audit`). Never
+hardcode a path.
 
 ## Step 2 — Locate the newest findings file
 
@@ -31,8 +37,33 @@ and exit clean.
 
 Glob `<paths.inbox>/*.md` AND `<paths.triaged>/*.md`. For each file, parse frontmatter
 and keep ONLY entries with `type: audit-finding` (feed-items carry no `finding_id` —
-exclude them so they never collapse into a junk key). From each, read `origin` and
-`finding_id`; add `"<origin>|<finding_id>"` to a set `seen`.
+exclude them so they never collapse into a junk key). From each, read `origin`,
+`finding_id`, and `related_files`; add the key to a set `seen`.
+
+### The dedup key
+
+```
+<origin>|<finding_id>|<instance>
+```
+
+`<instance>` is the `related_files` list joined in order with `,` and no spaces
+(`projects/alpha/STATE.md,projects/beta/STATE.md`). An absent or empty list yields an
+empty `<instance>` segment; the key still has its two separators.
+
+The third segment is what makes the key a *violation* key rather than a *rule* key.
+`finding_id` for a judge finding is the rule id, so on `<origin>|<finding_id>` alone,
+disposing "declared folders must exist" once suppressed every future violation of that
+rule forever: the second missing folder was silently swallowed as a duplicate of the
+first, and the import cheerfully reported nothing new. `related_files` is the
+discriminator already present in the findings JSON, and it is stable — re-detecting the
+*same* violation yields the same file list, while a new one changes it.
+
+For linter items `related_files` is `[<path>]`, and the path is already inside
+`finding_id`, so the key behaves exactly as it did before for that origin.
+
+The tradeoff is deliberate: a finding whose file list changes for a cosmetic reason
+(a rename, a reordering by the auditor) re-imports once as a new entry. A duplicate you
+can see and dispose beats a real violation you never learn about.
 
 ## Step 4 — Adapt each finding to an inbox-entry
 
@@ -40,9 +71,12 @@ Compute today's local date `YYYY-MM-DD` = UTC shifted by `timezone_offset_hours`
 
 For each item in `judge_findings`:
 
-- **Skip** any item whose `id == "memory-cluster"` — these are memory-scope findings
-  excluded from the bridge (scope-M exclusion per spec §1.3). Log:
-  `Skipping memory-cluster finding (scope-M excluded).`
+- **Skip** any item whose `id == "memory-cluster"` — memory findings are about the
+  hygiene of a long-lived memory store, not about anything in the vault tree, so they
+  have no file to act on and no place in a file-disposition ledger. They are also off
+  by default in vault-audit, so importing them would surface a finding most users never
+  asked to generate. Log:
+  `Skipping memory-cluster finding (memory scope is not bridged).`
 
 For each remaining judge item, build:
 - `type: audit-finding`, `source: vault-audit`, `origin: judge`
@@ -81,16 +115,25 @@ For each item in `linter_requires_decision`, build:
 
 ## Step 5 — Dedup, then write survivors
 
-For each adapted entry, compute `"<origin>|<finding_id>"`. If it is in `seen` → skip
-(already in inbox or triaged; never resurrect a disposed item). Also skip duplicates
-WITHIN this import (two findings sharing a key collapse to one — add the key to `seen`
-as you write).
+For each adapted entry, compute `"<origin>|<finding_id>|<instance>"` per Step 3 —
+`<instance>` from the entry's own `related_files`, joined in order with `,`. If the key
+is in `seen` → skip (already in inbox or triaged; never resurrect a disposed item).
+Also skip duplicates WITHIN this import (two findings sharing a key collapse to one —
+add the key to `seen` as you write).
+
+Two live violations of one rule now carry different keys and both land. Their titles
+are identical (the title is the rule text), so the collision counter below gives them
+distinct filenames — `-1`, `-2` — and the bodies differ by their `Related files` line.
 
 For each survivor, write `<paths.inbox>/<date>-<slug>-<n>.md` exactly as
 `/vault-feed:pull` Phase 3b does: `slug` = lowercased `title`, non-alphanumeric → `-`,
-max 60 chars; collision counter starting at `-1`; frontmatter from the fields above
-(include `origin`, `finding_id`, and `severity`/`related_files` where present); body as
-above. Create `<paths.inbox>/` if absent.
+max 60 chars; collision counter starting at `-1`; frontmatter from the fields above;
+body as above. Create `<paths.inbox>/` if absent.
+
+`origin`, `finding_id`, and `related_files` are always written — Step 3 rebuilds the
+dedup key from exactly those three, so an entry missing one comes back as new on the
+next import. Write `related_files: []` when the finding carried none. `severity` is
+judge-only and omitted for linter items.
 
 File format:
 
@@ -133,8 +176,10 @@ memory-scope filtered count is surfaced here too (fail-soft ≠ silent), and the
 
 | Failure | Behaviour |
 |---|---|
+| Neither config nor bundled fallback | STOP naming both paths (Step 1) |
 | No findings file | "Nothing to import …", exit clean (not an error) |
 | Unknown schema major | Refuse with the schema string, exit |
 | Both arrays empty | "Nothing to import.", exit clean |
 | inbox/ absent | create before first write |
+| Finding has no `related_files` | Empty `<instance>` segment; write `related_files: []` |
 | A malformed finding object | warn (`Skipping malformed finding: <reason>`), continue |

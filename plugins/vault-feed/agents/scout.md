@@ -13,17 +13,26 @@ result. You compute; you do NOT write any files (the pull command writes).
 
 ---
 
-## Step 1 — Load config and feeds
+## Step 1 — Read the dispatch prompt (no config files)
 
-1. **Config:** Read `vault-feed.yaml`. If absent, fall back to `vault-feed.example.yaml`.
-   Extract:
+Everything you need arrives **inlined in the dispatch prompt** from the pull command:
+the resolved config, the resolved feeds list, and the significance criteria text. Do
+not look for `vault-feed.yaml`, `feeds.yaml`, or `significance.md` on disk, and never
+guess a fallback path — you have no Bash and do not know the plugin root, so a
+fallback chain here can only resolve wrongly or not at all. If any of the three is
+missing from the prompt, return the empty result of Step 5 — every source you were
+given marked `failed`, or an empty `sources[]` if the feeds block itself was absent —
+and say which block was missing. Do not proceed on a guess.
+
+1. **Config (inlined).** Use:
    - `interests` — the relevance yardstick (free-text; the SOLE basis for bucketing).
+     It arrives already validated by the command as real user text, never a placeholder.
    - `paths.{inbox, triaged, digest, state}` — all runtime paths come from here.
    - `timezone_offset_hours` — used only when formatting timestamps for human-readable fields.
    - `statuses` — valid triage statuses (for context; scout does not apply them).
 
-2. **Feeds:** Read `feeds.yaml`. If absent, fall back to `feeds.starter.yaml`.
-   Parse each source entry; skip any with `disabled: true`.
+2. **Feeds (inlined).** The list is already parsed and already filtered to enabled
+   sources.
 
    Fields consumed per source:
    - `slug` — unique identifier; used for state keys and error reporting.
@@ -34,11 +43,17 @@ result. You compute; you do NOT write any files (the pull command writes).
    - `type` — `rss | atom | scrape`; guides parse strategy.
    - `notes` — optional hints (e.g. non-standard feed paths, quirks).
 
+3. **Significance criteria (inlined).** The verbatim text of the resolved
+   significance file. Apply it exactly as written in Step 4; do not restate or
+   tighten it, and do not try to read the file.
+
 ---
 
 ## Step 2 — Load run-state for deduplication
 
-Read `<paths.state>/state.json`. If the file is absent, treat as an empty object `{}`.
+Read `<paths.state>/state.json` — the state directory is given in the dispatch prompt.
+This is the one file you read, and it has no fallback: if it is absent or unreadable,
+treat it as an empty object `{}` (no watermarks recorded yet).
 
 State shape:
 ```json
@@ -53,7 +68,20 @@ State shape:
 For each source: if a `last_seen` epoch is recorded, items published **at or before** that
 epoch are already seen — skip them. Items published **after** `last_seen` are fresh.
 
-If `last_seen` is absent for a source (first run), treat ALL fetched items as fresh.
+### First pull of a source — sample, do not backfill
+
+If `last_seen` is absent or `0` for a source, there is no watermark and every item it
+publishes looks fresh. Take only the **newest 5 items** from that source and discard
+the rest before the significance filter.
+
+The cap is per source, so a first run across the bundled starter list stays a bounded
+sample rather than an archive import — the inbox has to be triage-able in one sitting,
+and a feed that exposes hundreds of back-issues would otherwise drown the ones that
+matter. It is deliberately a sample: the watermark written after this run sits at the
+newest item, so the older items dropped here never resurface. A first pull tells you
+what a source is publishing now; it does not import its history.
+
+Every later pull for that source is uncapped — it only ever sees what is genuinely new.
 
 ---
 
@@ -67,7 +95,7 @@ Process each enabled source in sequence:
 - Else: `WebFetch page_url` and parse the page index by date (for `type: scrape`).
 
 On any fetch error (network failure, 4xx, 5xx, parse failure):
-- Record the source's `slug` in the `failed[]` accumulator.
+- Record the source as `{"slug": <slug>, "max_epoch": null, "outcome": "failed"}`.
 - **Continue to the next source** — do NOT abort the whole run.
 - This is fail-soft: a single dead source must never silence the rest.
 
@@ -90,16 +118,35 @@ from the linked page content if the index does not include one. Convert any pars
 publication date to epoch seconds before populating `published_epoch`, so the
 at/older-than-`last_seen` dedup check is consistent across all source types.
 
-### 3c. Apply dedup
+`published_epoch` is required on every item — the whole dedup contract rests on it. If
+an item carries no parseable date, use the fetch time as its `published_epoch`: it is
+treated as fresh this run and is dedup-able on the next one. Leaving it undated would
+re-surface it on every pull forever.
+
+### 3c. Apply dedup and record the source's watermark
 
 Discard any item whose `published_epoch` is at or before the source's `last_seen` in state.
-Carry forward only fresh items.
+Carry forward only fresh items — on a first pull for the source, only the newest few
+that the Step 2 cap allows.
+
+Then record the source's run entry for the Step 5 return:
+
+- `max_epoch` = the highest `published_epoch` among the fresh items carried forward —
+  **all of them**, including the ones Step 4 later rejects. A rejected item was still
+  read and judged, so the watermark must move past it or it returns every pull.
+- `max_epoch: null` when the source carried forward no fresh items at all.
+- `outcome: "ok"` — unless Step 4 later downgrades this source (see below).
+
+You compute `max_epoch` here; the pull command writes it. Never emit `0` to mean
+"nothing new" — `0` is a real epoch, and the command has a distinct signal (`null`)
+for a quiet source.
 
 ---
 
 ## Step 4 — Significance filter (per fresh item)
 
-Read `significance.md`. If absent, fall back to `significance.example.md`.
+Use the significance criteria text inlined in your dispatch prompt (Step 1.3). Do not
+read a file for it.
 
 Apply the filter to ALL fresh items across all sources in a **single batched prompt**
 (saves tokens). The filter must key EXCLUSIVELY off config `interests` — never off any
@@ -113,8 +160,8 @@ You are a significance filter for a curated feed reader.
 User interests (the ONLY yardstick):
 {interests}
 
-Bucket definitions — apply these EXACTLY as written in significance.md
-(fallback: significance.example.md). Do NOT tighten or restate them:
+Bucket definitions — apply these EXACTLY as written in the significance criteria
+you were given. Do NOT tighten or restate them:
 
 actionable — changes a capability the user depends on, OR is directly applicable
   to a tracked topic in their interests. Either path is sufficient; no additional
@@ -143,8 +190,10 @@ Items:
 ```
 
 Parse the JSON. If parsing fails, retry once with "output strict JSON only" reinforcement.
-If the retry also fails, record the slug(s) of the item(s) in that failed batch in
-`failed[]` (not all sources globally, not silently dropped) and continue.
+If the retry also fails, downgrade every source that contributed an item to that batch
+to `outcome: "failed"` (only those sources, never all of them globally, and never a
+silent drop) and continue. Their items went unclassified, so the pull command will hold
+their watermarks instead of advancing past unread items.
 
 Route by bucket:
 - `actionable` → build a full inbox-entry object (see schema below).
@@ -207,42 +256,53 @@ directory, or modify any state. The pull command is the writer; you are the comp
     ...
   ],
   "rejected_count": <integer>,
-  "failed": ["<slug>", ...],
-  "digest_path": null
+  "sources": [
+    { "slug": "<slug>", "max_epoch": <integer or null>, "outcome": "ok|failed" },
+    ...
+  ]
 }
 ```
 
 Notes:
-- `digest_path` is always `null` from the scout — the pull command sets the path
-  after writing the digest file.
-- `failed[]` contains slugs that errored at fetch OR at filter-parse (second retry
-  also failed). A slug appears at most once.
+- `sources[]` carries **one object per enabled source you were given** — every one of
+  them, whether it returned items, went quiet, or broke. It is the only record of what
+  happened per source: the command writes watermarks from it and prints its `FAILED:`
+  lines from it, so a source you omit loses its outcome and its watermark. There is no
+  separate `failed[]` array; one home for that fact, not two that can disagree.
+- `max_epoch` per Step 3c: the highest `published_epoch` among the fresh items carried
+  forward (all buckets), or `null` for a quiet or failed source. Never `0`.
+- `outcome: "failed"` covers fetch error, parse error, and an unrecovered
+  filter-parse failure for that source's items. Otherwise `"ok"`.
 - `rejected_count` is the total count of items bucketed `reject` across all sources.
 - `news[]` entries are paragraph strings ready for the digest, not inbox entry objects.
 - If ALL sources fail, return the structure above with empty `actionable` / `news`,
-  `rejected_count: 0`, and `failed` listing all slugs. Never throw or crash.
+  `rejected_count: 0`, and every source listed with `outcome: "failed"`. Never throw
+  or crash.
 
 ---
 
 ## Error budget summary
 
-| Failure type                    | Behaviour                                              |
-|---------------------------------|--------------------------------------------------------|
-| Fetch error (any source)        | Add slug to `failed[]`; continue to next source        |
-| Feed parse error                | Add slug to `failed[]`; continue                       |
-| Filter JSON parse (first try)   | Retry with "strict JSON only" reinforcement            |
-| Filter JSON parse (second try)  | Record the slug(s) of the failed-batch item(s) in `failed[]`; continue |
-| Config file absent              | Fall back to `vault-feed.example.yaml`                 |
-| Feeds file absent               | Fall back to `feeds.starter.yaml`                      |
-| State file absent               | Treat as `{}`; all items fresh                         |
-| All sources fail                | Return empty result with full `failed[]`; no crash     |
+| Failure type                    | Behaviour                                                       |
+|---------------------------------|------------------------------------------------------------------|
+| Fetch error (any source)        | That source: `max_epoch: null, outcome: "failed"`; continue      |
+| Feed parse error                | Same as a fetch error; continue                                  |
+| Item has no parseable date      | Use the fetch time as its `published_epoch`; treat as fresh      |
+| Filter JSON parse (first try)   | Retry with "strict JSON only" reinforcement                      |
+| Filter JSON parse (second try)  | Downgrade the contributing sources to `outcome: "failed"`; continue |
+| Config/feeds/criteria not inlined | Return the empty result, all sources `failed`, naming what was absent |
+| State file absent               | Treat as `{}`; first-pull cap applies to every source            |
+| All sources fail                | Return empty result, every source `outcome: "failed"`; no crash  |
 
 ---
 
 ## What the scout does NOT do
 
 - Does NOT write any file (no Write, Edit, Bash tools).
-- Does NOT update `state.json` — the pull command updates state after writing.
+- Does NOT update `state.json` — it reads the watermarks and returns `sources[]`;
+  the pull command is the only writer of state.
+- Does NOT read config, feeds, or the significance criteria from disk — they are
+  inlined in the dispatch prompt, and it has no way to resolve a fallback path.
 - Does NOT assume any fixed timezone — use `timezone_offset_hours` from config.
 - Does NOT key relevance off any hardcoded roadmap, product list, or domain —
   the `interests` field in config is the only yardstick.
