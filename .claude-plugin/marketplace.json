@@ -11,7 +11,7 @@
     {
       "name": "vault-feed",
       "source": "./plugins/vault-feed",
-      "description": "Feed a Claude-Code knowledge vault: fetch curated feeds, filter each item for relevance to your stack, and triage the keepers into a dispositioned backlog. A scout (pull + significance filter) + a triager (interactive disposition)."
+      "description": "Feed a Claude-Code knowledge vault: fetch curated feeds, filter each item for relevance to your stack, and triage the keepers into a dispositioned backlog. A scout (pull + significance filter) + a triager (batch disposition)."
     },
     {
       "name": "vault-persona",

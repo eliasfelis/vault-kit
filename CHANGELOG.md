@@ -5,13 +5,218 @@ All notable changes to **vault-kit** are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-vault-kit is a marketplace of two plugins that version **independently** — each
+vault-kit is a marketplace of independently versioned plugins — each
 entry notes which plugin and version it covers. Tags on the repo follow the
 per-plugin convention `<plugin>-vX.Y.Z` (the latest per plugin = the newest
 entry below), plus the earlier bare-named `v0.3.0` / `v0.3.1` (before the
 convention).
 
 ---
+
+## vault-persona 0.1.0 — 2026-08-07
+
+**First release. Reworked before it shipped: the starters were unreachable.**
+
+### Added
+- `/vault-persona:persona` — apply a named audience overlay, list what is
+  available, or clear it with `off`. A persona is a markdown file, so adding one
+  means writing a file rather than editing a command.
+- Starters `executive` / `non-technical` / `peer`, resolved from the plugin tree
+  via `${CLAUDE_PLUGIN_ROOT}` and activated read-only in place — the plugin works
+  on a fresh install with no config file, no personas directory and nothing
+  copied. The listing merges your own directory with the starters and marks each
+  row `user` or `starter`; a file of yours shadows a starter of the same name.
+  Copying is only needed to *edit* a starter, and the listing prints that command.
+- Name safety: an argument (and a configured default) must be letters, digits,
+  spaces, hyphens or underscores. A dot, a slash or a traversal is rejected before
+  resolution — a name indexes the merged view, it is not a path.
+- `off` and `default` are reserved words, matched case-insensitively. A file named
+  after one can never be activated, so the listing shows it as unreachable rather
+  than offering it.
+- Case-insensitive resolution against the actual directory listing. Files inside
+  one tier differing only by case are an ambiguity error naming all of them —
+  never a silent pick, because the wrong voice applied confidently reads as
+  deliberate.
+- A machine-output carve-out in the command spec: the overlay applies to prose the
+  assistant composes and never to relayed machine-shaped output — positionally
+  parsed ledgers, status lines carrying counts or fixed prefixes, structured
+  payloads, quoted tool output. Where another command's spec says "verbatim", the
+  persona yields.
+- A closing limits line in every persona file. The documented fix for a drifted
+  voice is re-reading the persona, which re-injected only the voice; the reminder
+  travels with it. The command remains the canonical statement.
+
+### Changed
+- Config is optional and resolves in two real tiers: `vault-persona.yaml` at your
+  project root, else the built-ins. Keys: `paths.personas`, `default`.
+- Starter worked examples rewritten to obey the plugin's own safety clause. The
+  executive sample kept a hedge it had been stripping and lost an invented cause
+  and an invented commitment; the non-technical sample stopped answering a
+  question its source never answered and keeps the word *failed*; the
+  approximation guidance now requires marking an approximation and forbids
+  rounding across a threshold.
+
+### Removed
+- `vault-persona.example.yaml` — it byte-duplicated the built-in defaults and its
+  fallback tier was unreachable. The built-ins live in the command spec alone.
+- Frontmatter `name:` (the filename is the name) and `language:` (no consumer; its
+  only reachable effect was breaking English-only contracts elsewhere).
+
+## vault-feed 0.3.0 — 2026-08-07
+
+**A quiet source no longer erases its own history.** Audit + hands-on reproduction of
+the pull → state → triage path; the two critical findings both silently destroyed data
+while reporting success.
+
+### Fixed
+- **The watermark survived nothing.** `/vault-feed:pull` told the model to write epoch
+  `0` for a source with no fresh items, claiming it "leaves the existing last_seen
+  unchanged". It does not: the script overwrites unconditionally, so every quiet source
+  had its watermark reset to zero and re-flooded the inbox with its whole history on the
+  next pull. Deeper, the scout never returned an epoch at all, so even a busy source got
+  no correct watermark. The scout now returns a per-source record (`slug`, `max_epoch`,
+  `outcome`) and `feed-state.sh write` takes a `keep` epoch that holds the stored value
+  while still recording the outcome.
+- **`feed-state.sh write` silently dropped entries.** The write path demanded one exact
+  entry shape and discarded anything else — an extra field, a different key order — with
+  no error and no trace. It now parses as permissively as the read path, preserves extra
+  fields, and passes an entry it cannot parse through verbatim rather than deleting it.
+- **Triage applied decisions by position** against an order nothing pinned. A file
+  arriving between the ledger pass and the write-through pass shifted every index, and
+  the counts still matched, so each disposition landed on the wrong entry with nothing to
+  see. Ledger order is now the byte-order filename sort, and the write-through dispatch
+  carries explicit `(filename, status)` pairs. A file that vanishes costs one `FAILED:`
+  line instead of corrupting the rest of the batch.
+- **A failed move stranded an entry forever.** If the move failed after the frontmatter
+  edit, the entry sat in the inbox with a non-inbox status, and the "only process
+  `status: inbox`" rule stepped over it on every subsequent run. Each run now retries the
+  move once and reports `RESUMED:` or `FAILED:`.
+- **An unedited config classified live sources.** With no `vault-feed.yaml`, `interests`
+  is the shipped comment block, and the scout was told it is the sole basis for bucketing.
+  `/vault-feed:pull` now stops with setup instructions instead of filling the inbox with
+  confident noise.
+- **A second pull on one day overwrote that day's digest.** It now appends a timestamped
+  section.
+- **The audit bridge suppressed new violations.** The dedup key used the *rule* id, so
+  disposing one violation of a rule silently swallowed every future violation of it — the
+  rerun fixture cheerfully reported "0 new" while a second missing folder arrived. The key
+  now carries the finding's `related_files` as an instance discriminator.
+- Unbounded first pull (now a documented newest-few sample per source, not a backfill);
+  `feed-state.sh read` without a slug died on `set -u` with an exit code indistinguishable
+  from data (now usage, exit 2); unquoted `${CLAUDE_PLUGIN_ROOT}` and `<paths.state>`
+  broke on paths with spaces; `import-audit`'s config fallback was unanchored and had no
+  error path; two citations pointed at a spec that is not shipped; the plugin README named
+  `/vault-audit` instead of `/vault-audit:vault-audit`.
+
+### Changed
+- **Scout return contract** (breaking): `failed[]` and `digest_path` are replaced by
+  `sources[]`. The state write and the `FAILED:` summary now read one array, so they
+  cannot disagree about which source broke. `ledger_path` is likewise gone from the
+  triager return.
+- **One resolution convention.** `/vault-feed:pull` resolves config, feeds, *and* the
+  significance criteria and inlines all three into the dispatch; the scout has no Bash and
+  could never reach the fallbacks it was told to try. It reads no config file at all now.
+- `feed-state.sh` writes through a temp file, refuses to rewrite a state file that is not
+  a JSON object (exit 65), and rejects an epoch or outcome it cannot round-trip (exit 64).
+
+## vault-audit 0.4.2 — 2026-08-07
+
+**A rules-based auditor that quietly audited against someone else's rules, a timestamp
+that died west of UTC, and a report the user never received.**
+
+### Fixed
+- **The rules pack is now read from YOUR vault first.** Resolution is
+  `<cwd>/rules.yaml` → shipped `rules.starter.yaml` → shipped `rules.example.yaml`
+  (same for the judgment pack `rules.md`). Previously only the plugin directory was
+  consulted, so a pack written in your own vault was never read and the run silently
+  audited against the shipped starter conventions — the worst failure available to a
+  tool whose premise is "audit against your declared rules", because the output looks
+  right. Observed live: a demo vault's own `rules.yaml` ignored, most findings pure
+  noise from the starter naming pattern. Every run now prints one line naming the file
+  it loaded and which tier it came from. The plugin directory was also the wrong home
+  for user data — a reinstall replaces that tree.
+- **`{TS}` crashed for every timezone west of UTC.** The perl one-liner took the offset
+  as a bare argument, so `-5` was parsed as a perl switch and the command died at its
+  first output-producing step. Argument list now terminated with `--`.
+- **The leak gate no longer certifies files it could not read.** A binary or UTF-16 file
+  was skipped with a note and exit `0`, while an *unreadable* file failed the run —
+  the same epistemic state with opposite verdicts, and a leak inside a UTF-16 `.md`
+  passed the gate. Unscannable files are now listed and the run exits `2`; to declare
+  one out of scope, `--exclude` it, which puts the decision on the record. Every verdict
+  line carries both the scanned and the unscannable count.
+- **`sk-` no longer matches ordinary words.** The credential pattern had no left
+  boundary, so `risk-assessment-checklist-2026.md`, `task-management-…` and `kiosk-…`
+  matched in content *and* in filenames — false positives in exactly the place a gate
+  must be trustworthy. Windows user-profile paths are now also caught in their
+  forward-slash and Git-Bash mount spellings (drive-colon and `/c/`-prefixed forms).
+- **The judgment report reaches the user.** The Judge wrote its report inside its own
+  worktree, the user was pointed at that path in *their* checkout, and cleanup then
+  deleted the worktree. The Judge now returns the report as text (`report_markdown`)
+  and the command writes it to `<vault>/<report.dir>/report-<TS>.md`; if the report is
+  missing, the summary says `FAILED: judge report missing` instead of naming a file
+  that does not exist. The Judge no longer commits anything and no longer holds a
+  Write tool.
+- **The Linter's branch is created, not assumed.** The isolated worktree opens on a
+  harness-generated branch; nothing created `linter/<TS>`, yet the Linter's own guard
+  refuses to write unless it is on exactly that branch — so the autofix feature lived
+  on agent improvisation. The dispatch now pins the first action: `git switch -C
+  <branch_name>` inside the worktree, then verify. Observed live before the fix: one
+  agent improvised the switch, the design owed it a sentence.
+- **The base branch is whatever your vault has checked out.** "Current branch must be
+  `main`" and the uncommitted-changes prompt were unnumbered prose that a literal walk
+  of the steps never reached, and the hardcoded name locked out `master` / `trunk` /
+  working-branch vaults. Both are now a numbered step that derives the base branch,
+  refuses a detached HEAD, and asks before running on a dirty tree; every later
+  reference uses it.
+- **A vault that is not a git repository now fails before the lock is taken**, not at
+  worktree creation with the lock held (which left the next run facing a phantom busy
+  lock). `preflight.sh` reports `is_repo`, and the command passes `--repo-path` — it
+  had always reported on its own working directory instead of the configured vault.
+- **The lock is per-vault and honest about being a timer.** It lived in one
+  machine-global directory, so auditing one vault blocked an unrelated audit of
+  another; and the PID it recorded belonged to the already-exited lock script, making
+  its liveness check always false while looking authoritative (a recycled PID would
+  have wedged it forever). The command now derives the lock directory from the vault's
+  absolute path, the lockfile records that path, `release` warns on a mismatch, and
+  the documented semantics are the max-age timer they always were.
+- **Agents are told where the rules pack is.** Both agent prompts said the pack sits
+  "one level up from this agent file" — something a dispatched subagent cannot resolve
+  — while the orchestrator passed an unexpanded `${CLAUDE_PLUGIN_ROOT}/rules.yaml`
+  string. The orchestrator resolves once, to an absolute path, and passes it; the
+  agents just read it. Config-relative paths resolve against each agent's own worktree,
+  now stated explicitly.
+- **Broken-link repair is bounded.** Category A asked for a ≥90% similarity comparison
+  of each broken basename against every file in the vault, with no tool to do it.
+  Candidates are now the containing directory plus files sharing the first filename
+  token, capped per link, and hitting the cap surfaces as requires-decision rather
+  than a silent partial pass.
+- Invalid `--exclude` regexes are reported as invalid regexes (exit `2`) instead of
+  surfacing as "matched all N files"; `--tracked-only` with a single-file `--path` is
+  a loud usage error instead of being silently ignored; the `FAIL:` line no longer
+  conflates a filename hit and a content hit into an unexplained total.
+
+### Changed
+- **Quickstart is actually runnable:** copy `examples/demo-vault` out, `git init`,
+  commit, and run from inside it — the demo's own `rules.yaml` is now found.
+  `examples/EXPECTED-FINDINGS.md` re-derived category by category against that pack,
+  with the per-category cardinality rules stated (one frontmatter finding per file
+  listing its missing fields; one duplicate finding per basename).
+- The starter `update-protocol-gap` judgment check reads the vault's own history
+  (`git -C <vault root>`) instead of whatever repository encloses the working directory.
+- `naming.exempt_paths` and `frontmatter.exempt_paths` in both packs no longer re-list
+  paths that `governance_paths` already skips globally; what remains carries its reason.
+- Behavior layer gains agent-dispatch addenda (an in-flight agent is not a result;
+  read a return for what it structurally cannot know; try to break gate code before
+  calling it green; vary the model across verify seats) and two reflex rules
+  (proxy-vs-goal, and planting a clock where the decision reflex actually looks).
+- The dispatch call site is deliberately silent about the agent model: it is declared
+  once in each agent's frontmatter, where editing it has an effect.
+- Living working files (`STATE.md`, `roadmap.md`, `active-scope.md`, …) documented as
+  a named exempt class — exempt by basename rather than folder, with the reason stated
+  in both packs and in `PRINCIPLES.md`.
+- Wording pass across the shipped surface: the starter pack, the behavior layer and the
+  dispatch rationale describe what they do and what they guard against, without
+  reference to where they came from.
 
 ## vault-audit 0.4.1 — 2026-08-05
 
@@ -154,8 +359,8 @@ _Tag: `v0.3.0` (first formal release tag + GitHub Release)._
   a SessionStart-hook wiring example.
 
 ### Changed
-- Agents renamed `junker` / `builder` → **`linter` / `judge`** — generic names that
-  read without internal lore.
+- Agents renamed to **`linter` / `judge`** — names that describe the role without
+  prior context. *(Earlier internal names redacted for publication, 2026-08-07.)*
 
 ## vault-audit 0.1.0 — 2026-06-22
 
