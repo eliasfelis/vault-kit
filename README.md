@@ -1,6 +1,6 @@
 # vault-kit
 
-A small collection of operational tools for running a Claude-Code Markdown knowledge vault. Two tools so far — `vault-audit` and `vault-feed` — with more to come.
+A small collection of operational tools for running a Claude-Code Markdown knowledge vault — `vault-audit`, `vault-feed` and `vault-persona`, with more to come.
 
 ## Install
 
@@ -10,6 +10,7 @@ Both plugins come from the one marketplace — note the **two separate installs*
 /plugin marketplace add eliasfelis/vault-kit
 /plugin install vault-audit@vault-kit
 /plugin install vault-feed@vault-kit
+/plugin install vault-persona@vault-kit
 ```
 
 ---
@@ -54,6 +55,16 @@ See [`plugins/vault-feed/README.md`](plugins/vault-feed/README.md) for the full 
 
 ---
 
+## vault-persona
+
+`vault-persona` switches your assistant's voice for a target audience. Same work, different reader: the answer that helps a fellow engineer is the wrong answer for someone deciding a budget, and both are wrong for a reader who does not know the vocabulary.
+
+One command — `/vault-persona:persona <name>` — reads `personas/<name>.md`, so adding a persona means writing a markdown file, not editing a command. Three starters ship (`executive`, `non-technical`, `peer`) as worked samples to rewrite rather than defaults to obey.
+
+The overlay governs how the assistant writes, never what is true: it may change vocabulary, length and what comes first, but not drop a caveat that matters or inflate confidence. See [`plugins/vault-persona/README.md`](plugins/vault-persona/README.md).
+
+---
+
 ## Not using Claude Code?
 
 The plugins are Claude-Code-native (slash commands + subagents), but the material is portable: the rules packs (`rules.starter.yaml` / `rules.starter.md`) and `PRINCIPLES.md` read as plain guidance docs for any coding agent (Codex, Copilot, …), and the helper scripts (`leak-audit.sh`, `feed-state.sh`, `lock.sh`, `preflight.sh`) are plain bash + perl — they run anywhere Git Bash runs. To port a flow, hand your agent the corresponding `plugins/*/commands/*.md` file as a prompt.
@@ -68,7 +79,7 @@ MIT-licensed and provided as-is. Fork it, adapt it, ship it. I built this for my
 
 ## Roadmap
 
-A growing collection. `vault-audit` covers rules-based audit; `vault-feed` delivers the feed-pull + triage flow. Next planned: a persona-overlay engine (audience-specific session overlays you define as markdown files) and a git-truth staleness check for vault-audit (frontmatter dates vs actual last-commit dates). More vault tools after that.
+A growing collection. `vault-audit` covers rules-based audit, `vault-feed` delivers the feed-pull + triage flow, and `vault-persona` handles audience overlays. Next planned: a git-truth staleness check for vault-audit — frontmatter dates against the file's actual last-commit date, which catches both the note that claims to be fresh and the one that looks abandoned but is not. More vault tools after that.
 
 ---
 

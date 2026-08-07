@@ -1,6 +1,6 @@
 {
   "name": "vault-kit",
-  "description": "Operational tools for a Claude-Code markdown knowledge vault: rules-based audit (linter + judge) and a curated-feed triage flow.",
+  "description": "Operational tools for a Claude-Code markdown knowledge vault: rules-based audit (linter + judge), a curated-feed triage flow, and audience personas.",
   "owner": { "name": "eliasfelis" },
   "plugins": [
     {
@@ -12,6 +12,11 @@
       "name": "vault-feed",
       "source": "./plugins/vault-feed",
       "description": "Feed a Claude-Code knowledge vault: fetch curated feeds, filter each item for relevance to your stack, and triage the keepers into a dispositioned backlog. A scout (pull + significance filter) + a triager (interactive disposition)."
+    },
+    {
+      "name": "vault-persona",
+      "source": "./plugins/vault-persona",
+      "description": "Switch your assistant's voice for a target audience. A persona is a markdown file, so adding one means writing a file rather than editing a command. Ships executive / non-technical / peer starters."
     }
   ]
 }

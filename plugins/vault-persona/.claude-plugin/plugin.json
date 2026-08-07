@@ -1,0 +1,8 @@
+{
+  "name": "vault-persona",
+  "description": "Switch your assistant's voice for a target audience by dropping a markdown file.",
+  "version": "0.1.0",
+  "author": { "name": "eliasfelis" },
+  "license": "MIT",
+  "homepage": "https://github.com/eliasfelis/vault-kit"
+}
