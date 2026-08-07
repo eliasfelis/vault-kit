@@ -6,7 +6,7 @@ This file is injected verbatim into your assistant's context at the start of eve
 
 These reflexes pair with `PRINCIPLES.md`: the principles document the method, and the reflexes coach those same principles in-the-moment — reinforced while you work, not only caught after the fact by an audit.
 
-This is a **PM-flavored example** — these reflexes come from a product/portfolio-management vault. Treat them as a worked sample: keep what maps to your domain, drop the rest, rename freely.
+This is a **PM-flavored example** — these reflexes are written for a product/portfolio-management workflow. Treat them as a worked sample: keep what maps to your domain, drop the rest, rename freely.
 
 ## Visibility rule
 

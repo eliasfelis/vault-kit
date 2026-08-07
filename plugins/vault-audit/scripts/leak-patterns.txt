@@ -2,13 +2,45 @@
 # These are intentionally generic. Add your OWN instance-specific patterns at
 # run time:  leak-audit.sh --extra-patterns <your-private-file>
 # (each non-comment line is a perl/PCRE regex)
+#
+# COVERAGE CONTRACT: every pattern below has exactly one matching sample line in
+# tests/leak-fixture/dirty.md, in this order, and CI asserts findings == pattern count.
+# Add a pattern here without adding its sample there (or delete a pattern and leave the
+# sample) and the build fails - which is the point: before this contract existed, four
+# shipped patterns could be deleted with the positive control still green.
+# Keep each sample DISCRIMINATING: the scanner reports at most one finding per line, so two
+# patterns matching the same fixture line would collapse into one and break the count.
 
-# Windows user-profile absolute paths
+# Home / user-profile absolute paths. Windows takes three spellings of the same path -
+# backslash (native), forward slash (JSON / YAML / JS), and the Git-Bash mount form. The
+# macOS and Linux forms carry a left boundary of "real" separators so they fire on a genuine
+# path (line start, space, quote, `=`, `(`, `,`) but not on the Windows spellings above
+# (which own their own patterns) and not on the regex text of this very file. Known-loud
+# edge: a site-relative markdown link whose target starts at the Linux home directory (an
+# open paren immediately followed by that path) trips the last pattern. That is the right
+# side to err on for a publish gate - narrow it in your own copy, or --exclude the doc.
+# (Written the long way round here on purpose: spelling the example out literally would make
+# this comment line a finding against its own pattern - the repo self-gate scans this file.)
 [A-Za-z]:\\Users\\[^\\\r\n"' ]+
-# Common credential / token prefixes
+[A-Za-z]:/Users/[^/\r\n"' ]+
+/[A-Za-z]/Users/[^/\r\n"' ]+
+(^|[\s"'=(,])/Users/[^/\r\n"' ]+
+(^|[\s"'=(,])/home/[^/\r\n"' ]+
+# Common credential / token prefixes. Where a prefix could plausibly be the tail of an
+# ordinary word or identifier it gets the same left boundary as the sk- pattern below.
 ghp_[0-9A-Za-z]{20,}
+gho_[0-9A-Za-z]{20,}
+ghs_[0-9A-Za-z]{20,}
 github_pat_[0-9A-Za-z_]{20,}
 AKIA[0-9A-Z]{16}
 xox[baprs]-[0-9A-Za-z-]{10,}
-sk-(proj|svcacct|admin)?-?[0-9A-Za-z_-]{20,}
+(^|[^A-Za-z0-9])glpat-[0-9A-Za-z_-]{20,}
+(^|[^A-Za-z0-9])AIza[0-9A-Za-z_-]{35}
+(^|[^A-Za-z0-9])npm_[0-9A-Za-z]{20,}
+(^|[^A-Za-z0-9])sk_(?:live|test)_[0-9A-Za-z]{20,}
+# A left boundary is mandatory on this one: `sk-` is a frequent word ending (ri-sk-,
+# ta-sk-, kio-sk-), so an unbounded pattern flags ordinary filenames and prose. The
+# alternation form (rather than a lookbehind) keeps the pattern usable by a plain
+# grep -E as well as the perl scanner.
+(^|[^A-Za-z0-9])sk-(proj|svcacct|admin)?-?[0-9A-Za-z_-]{20,}
 -----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----

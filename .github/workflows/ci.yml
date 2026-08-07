@@ -22,11 +22,32 @@ jobs:
             echo "OK $s"
           done
 
-      - name: Leak gate self-test (positive + negative control)
+      - name: Leak gate self-test (positive + negative control + per-pattern coverage)
         run: |
           set -e
-          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/dirty.md || rc=$?
-          [ "$rc" -eq 1 ] || { echo "expected exit 1 on dirty fixture, got $rc"; exit 1; }
+          # The committed fixture must fail the gate on its own - that is the positive control a
+          # user can run by hand after cloning.
+          rc=0; out="$(bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/dirty.md)" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on dirty fixture, got $rc"; echo "$out"; exit 1; }
+          # A Slack bot token and a Stripe live key are NOT committed: a host's push protection
+          # refuses them even as test data, and a fixture nobody can push or fork is worse than
+          # one assembled here. Both are concatenated so this workflow file carries no contiguous
+          # match either, and appended to a copy that the coverage check below scans.
+          t="$(mktemp -d)"
+          cp tests/leak-fixture/dirty.md "$t/dirty.md"
+          printf 'Slack: %s\n'  'xox''b-000000000000-000000000000-abcdefghijklmnopqrstuvwx' >> "$t/dirty.md"
+          printf 'Stripe: %s\n' 'sk_''live_abcdefghijklmnopqrstuvwx'                        >> "$t/dirty.md"
+          rc=0; out="$(bash plugins/vault-audit/scripts/leak-audit.sh --path "$t/dirty.md")" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on the composed fixture, got $rc"; echo "$out"; exit 1; }
+          # Per-pattern coverage. The composed fixture carries exactly ONE discriminating sample
+          # line per shipped pattern, and the scanner reports at most one finding per line, so
+          # findings == pattern count. Exit 1 alone proves nothing about an individual pattern:
+          # delete one and the other samples keep the control red. This equality is what makes a
+          # deleted (or silently non-matching) pattern visible.
+          np="$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' plugins/vault-audit/scripts/leak-patterns.txt | wc -l | tr -d '[:space:]')"
+          nf="$(printf '%s\n' "$out" | grep -c '^LEAK ' || true)"
+          [ "$nf" -eq "$np" ] || { echo "pattern coverage drift: $nf finding(s) for $np shipped pattern(s)"; echo "every shipped pattern needs one discriminating sample - in tests/leak-fixture/dirty.md, or appended above when a host's push protection blocks committing it"; echo "$out"; exit 1; }
+          echo "pattern coverage OK: $nf finding(s) == $np shipped pattern(s)"
           bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/clean.md
 
       - name: Leak gate hardening controls (fail-open vectors stay closed)
@@ -43,12 +64,164 @@ jobs:
           touch "$d/$tok.md"
           rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path "$d" || rc=$?
           [ "$rc" -eq 1 ] || { echo "expected exit 1 on filename leak, got $rc"; exit 1; }
-          # a UTF-16 file must be skipped VISIBLY, never silently certified
+          # an unscannable (UTF-16) file must FAIL the gate, not pass with a note
           d2="$(mktemp -d)"
           printf 'Token: %s\n' "$tok" | iconv -f UTF-8 -t UTF-16LE > "$d2/redirected.txt"
           printf 'plain clean line\n' > "$d2/clean.md"
-          out="$(bash plugins/vault-audit/scripts/leak-audit.sh --path "$d2")"
-          echo "$out" | grep -q 'SKIP (binary/UTF-16' || { echo "expected visible SKIP line, got: $out"; exit 1; }
+          rc=0; out="$(bash plugins/vault-audit/scripts/leak-audit.sh --path "$d2")" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "expected exit 2 on unscannable file, got $rc"; exit 1; }
+          echo "$out" | grep -q 'UNSCANNABLE' || { echo "expected UNSCANNABLE list, got: $out"; exit 1; }
+          # --exclude is the documented way out: same tree, declared out of scope -> clean
+          bash plugins/vault-audit/scripts/leak-audit.sh --path "$d2" --exclude 'redirected\.txt$'
+          # sk- boundary: ordinary words must not trip the gate (filename AND content)
+          d3="$(mktemp -d)"
+          printf 'task-management-setup-notes and kiosk-deployment-instructions\n' > "$d3/risk-assessment-checklist-2026.md"
+          bash plugins/vault-audit/scripts/leak-audit.sh --path "$d3"
+          # ...but a real key still trips, at line start and in a filename
+          key='sk-''proj-abcdefghij0123456789ABCDEFGH'
+          d4="$(mktemp -d)"; printf '%s\n' "$key" > "$d4/notes.md"
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path "$d4" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on a real sk- key, got $rc"; exit 1; }
+          # forward-slash and git-bash Windows user-profile paths
+          # (path fragments are CONCATENATED so this file never contains a contiguous match)
+          up='/Users'
+          d5="$(mktemp -d)"; printf 'b: C:%s/jane/notes.txt\nc: /c%s/jane/notes.txt\n' "$up" "$up" > "$d5/p.md"
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path "$d5" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "expected exit 1 on C:/Users and /c/Users forms, got $rc"; exit 1; }
+          # an invalid --exclude must name its own cause, not "matched all N files"
+          rc=0; err="$(bash plugins/vault-audit/scripts/leak-audit.sh --path "$d5" --exclude '[' 2>&1)" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "expected exit 2 on invalid --exclude, got $rc"; exit 1; }
+          echo "$err" | grep -q 'invalid --exclude regex' || { echo "wrong cause: $err"; exit 1; }
+          # --tracked-only with a single file is a usage error, never a silent no-op
+          rc=0; bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/clean.md --tracked-only || rc=$?
+          [ "$rc" -eq 64 ] || { echo "expected exit 64, got $rc"; exit 1; }
+          # preflight must distinguish a non-repo from a clean repo
+          nd="$(mktemp -d)"
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path "$nd" | grep -q '"is_repo":false' \
+            || { echo "preflight lost is_repo:false"; exit 1; }
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path . | grep -q '"is_repo":true' \
+            || { echo "preflight lost is_repo:true"; exit 1; }
+          # ...and is_repo must mean "this path IS a working-tree root", not "this path sits
+          # under some repo". A plain dir nested in an unrelated repo answering true is how the
+          # audit ends up branching and committing in a repository nobody pointed it at.
+          pr="$(mktemp -d)"; git -C "$pr" init -q
+          mkdir -p "$pr/plain/deeper"
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path "$pr/plain" | grep -q '"is_repo":false' \
+            || { echo "preflight: a plain dir nested in a repo must be is_repo:false"; exit 1; }
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path "$pr/plain/deeper" | grep -q '"is_repo":false' \
+            || { echo "preflight: a deeper nested dir must be is_repo:false"; exit 1; }
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path "$pr" | grep -q '"is_repo":true' \
+            || { echo "preflight: the repo root itself must be is_repo:true"; exit 1; }
+          # a TRACKED subdirectory of this very repo is still not a repo root
+          bash plugins/vault-audit/scripts/preflight.sh --repo-path ./plugins | grep -q '"is_repo":false' \
+            || { echo "preflight: a subdir of the repo root must be is_repo:false"; exit 1; }
+
+      - name: Leak gate hardening controls II (red-team vectors that once certified clean)
+        run: |
+          set -e
+          L=plugins/vault-audit/scripts/leak-audit.sh
+          # every planted literal is CONCATENATED so this workflow file itself never contains a
+          # contiguous leak-shaped string (the repo self-gate scans it too)
+          tok='ghp_''abcdefghijklmnopqrstuvwxyz0123456789'
+          aws='AKIA''IOSFODNN7EXAMPLE'
+
+          # C1 - a NUL must be caught on ANY line, not just line 1. An ASCII first line is free
+          # to write, so a line-1-only probe is a one-line bypass of the whole gate.
+          d="$(mktemp -d)"
+          printf '# notes\n' > "$d/heading-first.md"
+          printf 'Token: %s\n' "$tok" | iconv -f UTF-8 -t UTF-16LE >> "$d/heading-first.md"
+          rc=0; out="$(bash $L --path "$d/heading-first.md")" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "C1 heading-first: want 2, got $rc"; echo "$out"; exit 1; }
+          echo "$out" | grep -q 'UNSCANNABLE' || { echo "C1: no UNSCANNABLE block: $out"; exit 1; }
+          printf -- '---\ntitle: notes\n---\n' > "$d/frontmatter-first.md"
+          printf 'Token: %s\n' "$tok" | iconv -f UTF-8 -t UTF-16LE >> "$d/frontmatter-first.md"
+          rc=0; out="$(bash $L --path "$d/frontmatter-first.md")" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "C1 frontmatter-first: want 2, got $rc"; echo "$out"; exit 1; }
+
+          # C2 - the walk allowlist must reach the secret-bearing files that used to hide
+          # behind one clean .md (the "0 files" guard only fires when NOTHING matched)
+          d2="$(mktemp -d)"
+          printf 'clean note, nothing here\n' > "$d2/readme.md"
+          printf 'AWS_ACCESS_KEY_ID=%s\n' "$aws" > "$d2/.env"
+          printf 'key=%s\n' "$aws" > "$d2/app.env.local"
+          printf 'aws_access_key_id = %s\n' "$aws" > "$d2/credentials"
+          printf 'access_key = "%s"\n' "$aws" > "$d2/main.tf"
+          printf 'INSERT INTO k VALUES (%s);\n' "$aws" > "$d2/dump.sql"
+          rc=0; out="$(bash $L --path "$d2")" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "C2: want 1, got $rc"; echo "$out"; exit 1; }
+          n="$(printf '%s\n' "$out" | grep -c '^LEAK ' || true)"
+          [ "$n" -eq 5 ] || { echo "C2: want 5 findings (.env, .env.local, credentials, .tf, .sql), got $n"; echo "$out"; exit 1; }
+          # a .env on its own, next to nothing else, is the headline case
+          d3="$(mktemp -d)"; printf 'AWS_ACCESS_KEY_ID=%s\n' "$aws" > "$d3/.env"
+          rc=0; bash $L --path "$d3" >/dev/null || rc=$?
+          [ "$rc" -eq 1 ] || { echo "C2 bare .env: want 1, got $rc"; exit 1; }
+
+          # C3 - a UTF-8 BOM must not silence a pattern. qr// proves a pattern COMPILES, not
+          # that it is the one the author typed; a BOM'd pattern compiles and matches nothing.
+          d4="$(mktemp -d)"
+          printf '\xef\xbb\xbfAKIA[0-9A-Z]{16}\n' > "$d4/bom-patterns.txt"
+          printf 'aws: %s\n' "$aws" > "$d4/doc.md"
+          rc=0; out="$(bash $L --path "$d4/doc.md" --pattern-file "$d4/bom-patterns.txt")" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "C3 BOM pattern-file: want 1, got $rc"; echo "$out"; exit 1; }
+          # same for the user's own instance-literal layer, and for a BOM on the SCANNED file
+          printf '\xef\xbb\xbf^(?i)acmecorp-internal\n' > "$d4/bom-extra.txt"
+          printf '\xef\xbb\xbfAcmeCorp-Internal ledger\n' > "$d4/bomdoc.md"
+          rc=0; out="$(bash $L --path "$d4/bomdoc.md" --extra-patterns "$d4/bom-extra.txt")" || rc=$?
+          [ "$rc" -eq 1 ] || { echo "C3 BOM extra-patterns / BOM document: want 1, got $rc"; echo "$out"; exit 1; }
+
+          # M2 - a submodule gitlink is a DIRECTORY: it opens, reads zero lines, and used to be
+          # counted as one more scanned-clean file. It must be listed and refuse to certify.
+          g="$(mktemp -d)"; git -C "$g" init -q
+          printf 'clean\n' > "$g/ok.md"; git -C "$g" add ok.md
+          mkdir -p "$g/sub"; printf 'AWS: %s\n' "$aws" > "$g/sub/secret.md"
+          git -C "$g" update-index --add --cacheinfo 160000,0000000000000000000000000000000000000001,sub
+          rc=0; out="$(bash $L --path "$g" --tracked-only)" || rc=$?
+          [ "$rc" -eq 2 ] || { echo "M2 gitlink: want 2, got $rc"; echo "$out"; exit 1; }
+          echo "$out" | grep -q 'directory/gitlink' || { echo "M2: gitlink not listed: $out"; exit 1; }
+          echo "$out" | grep -q '1 file(s) scanned' || { echo "M2: gitlink still counted as scanned: $out"; exit 1; }
+
+          # minor - --exclude ADDS to the built-in `\.git/`, it does not replace it
+          g2="$(mktemp -d)"; git -C "$g2" init -q
+          printf 'clean\n' > "$g2/ok.md"
+          printf 'Token: %s\n' "$tok" > "$g2/.git/planted.md"
+          rc=0; out="$(bash $L --path "$g2" --exclude 'foo')" || rc=$?
+          [ "$rc" -eq 0 ] || { echo "user --exclude re-opened .git/: want 0, got $rc"; echo "$out"; exit 1; }
+          echo "hardening II OK"
+
+      - name: lock.sh smoke (acquire / busy / refused release / release)
+        run: |
+          set -e
+          K=plugins/vault-audit/scripts/lock.sh
+          ld="$(mktemp -d)/lock"
+          va='/vault-a'; vb='/vault-b'
+          rc=0; bash $K acquire --lock-dir "$ld" --vault-path "$va" >/dev/null || rc=$?
+          [ "$rc" -eq 0 ] || { echo "acquire: want 0, got $rc"; exit 1; }
+          rc=0; bash $K acquire --lock-dir "$ld" --vault-path "$va" >/dev/null || rc=$?
+          [ "$rc" -eq 1 ] || { echo "second acquire: want 1 (busy), got $rc"; exit 1; }
+          # releasing someone else's lock unprotects their live run - refuse, keep the lockfile
+          rc=0; bash $K release --lock-dir "$ld" --vault-path "$vb" >/dev/null 2>&1 || rc=$?
+          [ "$rc" -ne 0 ] || { echo "mismatched release must be refused, got 0"; exit 1; }
+          [ -f "$ld/.running" ] || { echo "mismatched release deleted the lock anyway"; exit 1; }
+          rc=0; bash $K release --lock-dir "$ld" --vault-path "$va" >/dev/null || rc=$?
+          [ "$rc" -eq 0 ] || { echo "matching release: want 0, got $rc"; exit 1; }
+          [ ! -f "$ld/.running" ] || { echo "matching release left the lock in place"; exit 1; }
+          # force-release stays the escape hatch for a run you know is dead
+          bash $K acquire --lock-dir "$ld" --vault-path "$va" >/dev/null
+          rc=0; bash $K force-release --lock-dir "$ld" --vault-path "$vb" >/dev/null 2>&1 || rc=$?
+          [ "$rc" -eq 0 ] || { echo "force-release: want 0, got $rc"; exit 1; }
+          [ ! -f "$ld/.running" ] || { echo "force-release did not delete the lock"; exit 1; }
+          # an absurd --max-age-min overflowed *60 to negative and silently disabled the lock
+          bash $K acquire --lock-dir "$ld" --vault-path "$va" >/dev/null
+          rc=0; bash $K acquire --lock-dir "$ld" --vault-path "$va" --max-age-min 200000000000000000 >/dev/null 2>&1 || rc=$?
+          [ "$rc" -eq 64 ] || { echo "absurd --max-age-min: want 64, got $rc"; exit 1; }
+          [ -f "$ld/.running" ] || { echo "a rejected --max-age-min must not disturb the lock"; exit 1; }
+          # ...but the documented ceiling must still be usable: the guard bounds the value, it
+          # does not quietly narrow the supported range
+          bash $K force-release --lock-dir "$ld" >/dev/null
+          rc=0; bash $K acquire --lock-dir "$ld" --vault-path "$va" --max-age-min 525600 >/dev/null || rc=$?
+          [ "$rc" -eq 0 ] || { echo "max-age at the documented ceiling must be accepted, got $rc"; exit 1; }
+          bash $K force-release --lock-dir "$ld" >/dev/null
+          echo "lock.sh OK"
 
       - name: Repo self-gate (generic patterns, all tracked files)
         run: |
@@ -57,10 +230,67 @@ jobs:
       - name: feed-state smoke
         run: |
           set -e
+          F=plugins/vault-feed/scripts/feed-state.sh
           d="$(mktemp -d)"
-          bash plugins/vault-feed/scripts/feed-state.sh write "$d" slug-a 1000 ok
-          bash plugins/vault-feed/scripts/feed-state.sh write "$d" slug-b 2000 failed
-          got="$(bash plugins/vault-feed/scripts/feed-state.sh read "$d" slug-a)"
+          bash $F write "$d" slug-a 1000 ok
+          bash $F write "$d" slug-b 2000 failed
+          got="$(bash $F read "$d" slug-a)"
           [ "$got" = "1000" ] || { echo "read: expected 1000, got $got"; exit 1; }
-          sum="$(bash plugins/vault-feed/scripts/feed-state.sh summary "$d")"
+          sum="$(bash $F summary "$d")"
           [ "$sum" = "ok=1 failed=1 failed_slugs=slug-b" ] || { echo "summary mismatch: $sum"; exit 1; }
+          # keep preserves the watermark and still updates the outcome
+          bash $F write "$d" slug-a keep failed
+          got="$(bash $F read "$d" slug-a)"
+          [ "$got" = "1000" ] || { echo "keep erased the watermark: $got"; exit 1; }
+          [ "$(bash $F summary "$d")" = "ok=0 failed=2 failed_slugs=slug-a,slug-b" ] || { echo "keep did not update outcome"; exit 1; }
+          # keep on an unknown slug seeds 0, never crashes
+          bash $F write "$d" slug-new keep ok
+          [ "$(bash $F read "$d" slug-new)" = "0" ] || { echo "keep on new slug should be 0"; exit 1; }
+          # an entry with an extra field must survive a write of another slug
+          d2="$(mktemp -d)"
+          printf '{"a":{"last_seen":111,"outcome":"ok","etag":"W/xyz"},"b":{"last_seen":222,"outcome":"ok"}}' > "$d2/state.json"
+          bash $F write "$d2" c 333 ok
+          for k in '"a"' '"b"' '"c"' 'etag'; do
+            grep -q "$k" "$d2/state.json" || { echo "write dropped $k: $(cat "$d2/state.json")"; exit 1; }
+          done
+          # the shipped fixture layout must round-trip
+          d3="$(mktemp -d)"; cp tests/feed-state/fixture.json "$d3/state.json"
+          [ "$(bash $F read "$d3" anthropic-news)" = "1719100000" ] || { echo "fixture read failed"; exit 1; }
+          bash $F write "$d3" openai-blog keep ok
+          [ "$(bash $F read "$d3" anthropic-news)" = "1719100000" ] || { echo "fixture entry lost on write"; exit 1; }
+          # argument guards: usage 2, bad value 64
+          rc=0; bash $F read "$d" >/dev/null 2>&1 || rc=$?;            [ "$rc" -eq 2 ]  || { echo "read w/o slug: want 2, got $rc"; exit 1; }
+          rc=0; bash $F summary >/dev/null 2>&1 || rc=$?;              [ "$rc" -eq 2 ]  || { echo "summary w/o dir: want 2, got $rc"; exit 1; }
+          rc=0; bash $F write "$d" s -5 ok >/dev/null 2>&1 || rc=$?;   [ "$rc" -eq 64 ] || { echo "negative epoch: want 64, got $rc"; exit 1; }
+          rc=0; bash $F write "$d" s 1.5 ok >/dev/null 2>&1 || rc=$?;  [ "$rc" -eq 64 ] || { echo "float epoch: want 64, got $rc"; exit 1; }
+          # M4: a brace inside a string value must not blind read/summary (write already coped)
+          d4="$(mktemp -d)"
+          printf '%s' '{"src":{"title":"Release }{ notes","last_seen":1700000000,"outcome":"failed"}}' > "$d4/state.json"
+          [ "$(bash $F read "$d4" src)" = "1700000000" ] || { echo "M4: brace-in-string hid the watermark"; exit 1; }
+          [ "$(bash $F summary "$d4")" = "ok=0 failed=1 failed_slugs=src" ] || { echo "M4: brace-in-string hid the failure"; exit 1; }
+          # M4: a nested object must not blind them either
+          d4b="$(mktemp -d)"
+          printf '%s' '{"src":{"meta":{"x":1},"last_seen":111,"outcome":"failed"}}' > "$d4b/state.json"
+          [ "$(bash $F read "$d4b" src)" = "111" ] || { echo "M4: nested object hid the watermark"; exit 1; }
+          [ "$(bash $F summary "$d4b")" = "ok=0 failed=1 failed_slugs=src" ] || { echo "M4: nested object hid the failure"; exit 1; }
+          # M5: keep on a QUOTED last_seen preserves it and emits exactly one key
+          d5="$(mktemp -d)"
+          printf '%s' '{"src":{"last_seen":"1700000000","outcome":"ok"}}' > "$d5/state.json"
+          bash $F write "$d5" src keep failed
+          [ "$(bash $F read "$d5" src)" = "1700000000" ] || { echo "M5: keep erased a quoted watermark"; exit 1; }
+          n="$(grep -o '"last_seen"' "$d5/state.json" | wc -l | tr -d ' ')"
+          [ "$n" = "1" ] || { echo "M5: duplicate last_seen key ($n)"; exit 1; }
+          # M6: a non-JSON file that merely contains a brace pair is refused, not salvaged
+          d6="$(mktemp -d)"; src='function x() { return 1; }'; printf '%s' "$src" > "$d6/state.json"
+          rc=0; bash $F write "$d6" s 10 ok >/dev/null 2>&1 || rc=$?
+          [ "$rc" -eq 65 ] || { echo "M6: want 65, got $rc"; exit 1; }
+          [ "$(cat "$d6/state.json")" = "$src" ] || { echo "M6: file was mangled"; exit 1; }
+          # M3: a slug carrying a quote is rejected before anything is written
+          d3b="$(mktemp -d)"
+          rc=0; bash $F write "$d3b" 'x","victim":{"last_seen":9999999999,"outcome":"ok' 1 ok >/dev/null 2>&1 || rc=$?
+          [ "$rc" -eq 64 ] || { echo "M3: injection slug want 64, got $rc"; exit 1; }
+          [ ! -e "$d3b/state.json" ] || { echo "M3: state written despite a bad slug"; exit 1; }
+          # a leading-zero epoch must not produce JSON the next run cannot read
+          d7="$(mktemp -d)"; bash $F write "$d7" s 007 ok
+          [ "$(bash $F read "$d7" s)" = "7" ] || { echo "007 epoch not normalised"; exit 1; }
+          echo "feed-state OK"

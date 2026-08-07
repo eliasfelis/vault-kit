@@ -1,8 +1,8 @@
 # Judgment checks - opinionated starter (read by the `judge` agent)
 
-Proven, structure-agnostic checks for any Claude-Code knowledge vault. Each entry:
-`id`, `rule`, `detect`, `severity`. Copy to `rules.md` and adjust; for a bare 3-example
-set instead, see rules.example.md.
+Opinionated, structure-agnostic checks for any Claude-Code knowledge vault. Each entry:
+`id`, `rule`, `detect`, `severity`. Copy it to `rules.md` in your vault root and adjust;
+for a bare minimal set instead, see rules.example.md.
 
 ## anti-patterns
 
@@ -25,7 +25,7 @@ set instead, see rules.example.md.
 
 - id: update-protocol-gap
   rule: "A commit that adds a command/skill/hook/rule should also touch a doc (changelog/architecture/user-manual)."
-  detect: "Read the last ~30 commits; for any whose subject matches add(command|skill|hook|rule), check the same commit touched a docs file; flag misses."
+  detect: "Read the last ~30 commits of the VAULT's own repository — always `git -C <vault root> log`, never a bare `git log`, which would walk the history of whatever repo happens to enclose your working directory and report a stranger's commits as your drift. If the vault root is not a git repo, no-op. For any commit whose subject matches add(command|skill|hook|rule), check the same commit touched a docs file; flag misses."
   severity: warning
 
 - id: session-summary-present

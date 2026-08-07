@@ -1,7 +1,8 @@
 # Judgment checks (read by the `judge` agent)
 
 Each check = a rule you declared somewhere + how to detect a violation + severity.
-These are GENERIC EXAMPLES. Replace with your own.
+These are GENERIC EXAMPLES. Copy this file to `rules.md` in your vault root and
+replace them with your own.
 
 ## anti-patterns
 

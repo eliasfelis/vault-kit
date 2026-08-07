@@ -1,4 +1,4 @@
-# vault-audit rules pack. Copy to `rules.yaml`, edit to match YOUR vault.
+# vault-audit rules pack. Copy to `rules.yaml` in your vault root, edit to match YOUR vault.
 # Omit any block to skip that check entirely.
 # Files matched by `governance_paths` are NEVER modified AND are skipped by
 # every detection below (you don't lint your own constitution).
@@ -25,17 +25,14 @@ frontmatter:
   tag_namespaces: ["type", "project", "topic", "status"]  # [] = allow any
   allowed_values:                 # optional closed enums per namespace
     project: ["alpha", "beta"]
-  exempt_paths:                   # files here skip the frontmatter check
-    - "archive/"
-    - "templates/"
+  exempt_paths:                   # only what governance_paths does not already skip
+    - "archive/"                  # cold storage: not migrated when standards change
 
 naming:
   enabled: true
   pattern: '^.+ \d{4}-\d{2}-\d{2}\.md$'  # regex filenames must match; "" to skip
-  exempt_paths:
-    - "archive/"
-    - "templates/"
-    - "docs/"
+  exempt_paths:                   # only what governance_paths does not already skip
+    - "archive/"                  # cold storage keeps the name it was archived under
   exempt_basenames: ["STATE.md", "index.md", "README.md"]  # living working files: amended not superseded, so no single date, and renaming breaks inbound links
 
 duplicates:
@@ -61,4 +58,4 @@ leak_scan:                        # defaults for /vault-audit:leak-scan (optiona
   exclude: '\.git/'
 
 report:
-  dir: ".vault-audit"             # where the Judge writes its standalone report
+  dir: ".vault-audit"             # where the run writes the Judge's report and the run summary
