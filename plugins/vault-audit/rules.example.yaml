@@ -36,10 +36,12 @@ naming:
     - "archive/"
     - "templates/"
     - "docs/"
-  exempt_basenames: ["STATE.md", "index.md", "README.md"]  # structural files, no dated name
+  exempt_basenames: ["STATE.md", "index.md", "README.md"]  # living working files: amended not superseded, so no single date, and renaming breaks inbound links
 
 duplicates:
   enabled: true
+  # Same living-working-files list, different reason: these recur once per project by
+  # design, so identical basenames across the tree are the convention, not a duplicate.
   exempt_basenames: ["STATE.md", "index.md", "README.md"]
 
 staleness:

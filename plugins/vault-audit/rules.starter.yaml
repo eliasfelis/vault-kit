@@ -32,18 +32,26 @@ frontmatter:
 naming:
   enabled: true
   # A dated convention: "<project> <type> <description> - YYYY-MM-DD.md".
-  # (The source vault uses an EN-DASH before the date; a plain hyphen is shown here
-  #  for portability - use whichever you prefer.)
+  # (A plain hyphen separates the date here, for portability across shells and editors.
+  #  An en-dash reads better if your tooling handles it; if you switch, change the
+  #  pattern below and this comment together, or they drift apart.)
   pattern: '^.+ - \d{4}-\d{2}-\d{2}\.md$'
   exempt_paths:
     - "archive/"
     - "templates/"
     - "docs/"
-  exempt_basenames: ["STATE.md", "index.md", "README.md"]
+  # LIVING WORKING FILES. Exempt by basename, not by folder: these sit among ordinary
+  # dated deliverables. A dated name cannot describe them (they are amended, not
+  # superseded, so they have no single date), and renaming one breaks every inbound
+  # link pointing at it. Extend this list with your own living docs; keep it a
+  # declaration, not an accident.
+  exempt_basenames: ["STATE.md", "index.md", "README.md", "roadmap.md", "active-scope.md", "parking-lot.md"]
 
 duplicates:
   enabled: true
-  exempt_basenames: ["STATE.md", "index.md", "README.md"]
+  # Same list, different reason: a living file recurs once per project by design, so
+  # identical basenames across the tree are the convention here rather than a duplicate.
+  exempt_basenames: ["STATE.md", "index.md", "README.md", "roadmap.md", "active-scope.md", "parking-lot.md"]
 
 staleness:
   enabled: true

@@ -35,7 +35,7 @@ Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.
 
 **Behavior layer** — optional in-session coaching reflexes: [`behavior-layer.example.md`](behavior-layer.example.md). Copy it into your project as `behavior-layer.md` and load it **from your instructions file** — one line, `@behavior-layer.md`, in your `CLAUDE.md` (or paste the layer inline if your tool has no import syntax). It is then loaded verbatim, every session.
 
-> **Do not deliver it through a SessionStart hook that prints the file.** It looks like it works, but hook stdout is capped — we measured truncation at roughly 2 KB — and the cut is silent and mid-file. A behavior layer is a few KB by nature (the example here is over 6 KB), so the hook route quietly drops most of your reflexes with no warning. [`hooks.example.json`](hooks.example.json) carries a different hook pattern — an allowlist guard that **blocks** a tool call — which is what hooks are actually good for.
+> **Do not deliver it through a SessionStart hook that prints the file.** It looks like it works, but hook stdout is capped — we measured truncation at roughly 2 KB — and the cut is silent and mid-file. A behavior layer runs to several KB by nature — the example here is well past the cap — so the hook route quietly drops most of your reflexes with no warning. [`hooks.example.json`](hooks.example.json) carries a different hook pattern — an allowlist guard that **blocks** a tool call — which is what hooks are actually good for.
 
 | Block | What it controls |
 |---|---|
@@ -44,7 +44,7 @@ Start from **`rules.starter.yaml`** (opinionated, proven) — or `rules.example.
 | `governance_paths` | Paths that are **never modified** and **skipped by all checks** (your constitution, rules, docs). |
 | `broken_refs` | Validates relative Markdown links and an optional frontmatter field that holds a file path. |
 | `frontmatter` | Checks for required fields, tag count bounds, allowed tag namespaces, optional closed enums per namespace. Supports `exempt_paths`. |
-| `naming` | Validates filenames against a regex pattern. Supports `exempt_paths` and `exempt_basenames` (structural files like `STATE.md`, `README.md`). |
+| `naming` | Validates filenames against a regex pattern. Supports `exempt_paths` and `exempt_basenames` (living working files like `STATE.md`, `README.md` — see `PRINCIPLES.md`). Basenames match exactly, so `ROADMAP.md` and `roadmap.md` are different entries. |
 | `duplicates` | Flags files with identical basenames across the tree. Supports `exempt_basenames`. |
 | `staleness` | Per-glob rules: checks that a frontmatter date field is within `max_age_days`. |
 | `memory` | Optional memory-folder hygiene (off by default). Set `enabled: true` and `path` to your Claude-Code memory folder. |

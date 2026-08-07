@@ -19,7 +19,7 @@ Don't skip stages. A note jumps from Capture to Engage without ever being Organi
 
 ## Discipline rules
 
-The gold. Seven rules that keep a single-operator system from drifting into noise. Each is a principle plus the failure it prevents.
+The gold — the rules that keep a single-operator system from drifting into noise. Each is a principle plus the failure it prevents. (Deliberately not counted here: a numeral in prose goes stale the first time the list changes, and a stale count is exactly the drift the auditor is supposed to catch.)
 
 ### subtraction-not-mechanism
 
@@ -36,6 +36,8 @@ When you defer an item, route it to a channel that has a clock — a dated task,
 ### one-source-of-truth
 
 Every fact lives in exactly one place. If two places disagree, that is a conflict to resolve, not a copy to keep — mark it contested and escalate, then reconcile to a single home. The reason: duplicated facts drift apart silently, and once they do you can no longer trust either copy or tell which is current. The cost of a single canonical location is a little indirection; the cost of two is a slow-motion data-integrity failure you discover at the worst moment. One fact, one home.
+
+Two shapes of this are worth naming because they look harmless. **A value declared in a definition and repeated at the call site:** the call site usually wins, so editing the definition changes nothing and warns you about nothing — configure it in one of the two and leave the other deliberately silent. **A count written into prose** ("the seven rules", "all twelve checks"): it is a copy of a fact that lives in the list itself, and it goes stale the moment the list changes. Reference the thing, don't tally it. The exception is a dated record — a changelog entry or a release note tallies what was true on its date and is not supposed to track the present, which is exactly why it must never be edited to agree with today.
 
 ### verify-live-state-before-acting
 
@@ -56,6 +58,8 @@ Put a human gate in front of anything that leaves your system. Send- and publish
 Name files on one predictable scheme: `<project> <type> <description> - <date>.md`. A consistent shape means a filename is itself metadata — you can scan, sort, and locate without opening anything, and tooling can validate names mechanically. Pick a delimiter and a date format and hold them everywhere.
 
 Allow a small set of **exempt folders** that opt out by design: entity registries (one file per person / place / method, named by the entity, where a date-stamped scheme would be noise), templates, and the archive. These follow their own internal convention or keep their original document names. Declare the exemptions explicitly so the auditor skips them instead of flagging them — and keep the exempt set small, or "exempt" quietly becomes "unconventional everywhere."
+
+There is a second exempt class, defined by *behaviour* rather than location: **living working files** — the per-project documents you keep amending instead of superseding (a state file, a roadmap, a scope or parking-lot note, a folder index). A dated scheme cannot describe them, because they have no single date; and renaming one breaks every inbound link that points at it, which is the real cost. Exempt them by basename rather than by folder, since they sit among ordinary dated deliverables. Basenames match exactly, so decide which spelling your vault uses and hold it — `ROADMAP.md` is not covered by an exemption written as `roadmap.md`, and the mismatch surfaces as a naming finding you will be tempted to explain away rather than fix. Two disciplines keep this from becoming a loophole: name the class in your rules pack so the exemption is a declaration and not an accident, and state *why* each exemption exists. An exemption without a stated reason is indistinguishable from a convention nobody enforces — and if it blesses two homes for one kind of thing, treat it as unresolved drift to merge, not as a rule.
 
 ---
 

@@ -151,7 +151,6 @@ Agent(
   description: "Linter vault audit",
   subagent_type: "vault-audit:linter",
   isolation: "worktree",
-  model: "sonnet",
   prompt: <linter prompt above>
 )
 ```
@@ -163,12 +162,16 @@ Agent(
   description: "Judge vault audit",
   subagent_type: "vault-audit:judge",
   isolation: "worktree",
-  model: "sonnet",
   prompt: <judge prompt above>
 )
 ```
 
 Foreground dispatch means each Agent call blocks until the agent finishes and returns its JSON inline — there is no background notification to wait for.
+
+**Neither dispatch passes a `model`.** Each agent declares its own in its frontmatter, and a
+per-invocation argument silently overrides that declaration — so repeating the model here
+would mean editing an agent's frontmatter had no effect and gave no warning. Change the model
+in `agents/linter.md` or `agents/judge.md`; the call site deliberately stays silent about it.
 
 ### Step 7: Collect results (inline)
 
