@@ -14,6 +14,10 @@ which is the positive control you can run by hand:
 
     bash plugins/vault-audit/scripts/leak-audit.sh --path tests/leak-fixture/dirty.md   # exits 1
 
+The samples that DO live here are fake and belong to nobody, but a host's scanner cannot tell
+that from a live key — so this one file is excluded in `.github/secret_scanning.yml`, by name,
+leaving everything else under `tests/` scanned.
+
 Win path: C:\Users\example\secrets.txt
 Win fwd: C:/Users/example/secrets.txt
 Git-Bash: /c/Users/example/secrets.txt
