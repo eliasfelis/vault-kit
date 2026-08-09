@@ -79,12 +79,13 @@ Name what *measures* the win — a small labelled example set plus a before/afte
 
 **Action:** save it as a durable reference note linked to the relevant area. Don't let it scroll past as chatter. This is a distinct class from tooling feedback: tooling feedback tunes how you work, a domain fact teaches the system what the world is — capture both, but file them apart.
 
+### session-close
+
+**Trigger:** the session is ending — a farewell, or an explicit request to wrap up and hand over.
+
+**Action:** run one ordered sequence, not an ad-hoc goodbye: a dense written summary → a reverse-retro pass routed per `reverse-candidate-capture` → a sweep of your task manager for follow-ups you now own, reported as skipped if you have none wired → a resume prompt for whoever picks this up next → commits by workstream with explicit pathspecs, status re-read immediately before. Then stop — no follow-up questions after the summary.
+
 ## Tone
 
 Define your assistant's voice here — e.g. concise / warm / playful. Keep tone to chat replies only, never in specs, code, or commit messages.
 
-## Shell gotchas worth keeping
-
-**Avoid `cd <path> && <cmd>` in tool calls.** The compound is evaluated as a whole, so a narrow allow-rule scoped to `<cmd>` never matches it — and it re-prompts on every new path you `cd` into, turning a routine command into a self-inflicted prompt source. The shell tool persists its working directory between calls, so just use absolute paths instead.
-
-**Commit with an explicit pathspec whenever the working tree is shared.** If anything else can stage files — a sync daemon, an editor plugin, a parallel session — a bare commit sweeps the whole index and ships someone else's half-finished work under your message. Name the paths you mean, and re-read the status right before committing rather than trusting a picture formed several steps ago.

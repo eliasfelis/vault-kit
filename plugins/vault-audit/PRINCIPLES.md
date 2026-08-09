@@ -51,6 +51,10 @@ Commit by workstream with explicit pathspecs; never reach for a blanket `git add
 
 Put a human gate in front of anything that leaves your system. Send- and publish-class actions (sending mail, posting to a channel, uploading, creating an external event) default to *ask*, never silent-allow; drafting is fine to automate, because a draft is not a send. The reason: an automated read or an internal edit is recoverable, but an outbound message is irreversible the instant it lands in someone else's inbox or channel. The asymmetry between "draft for me to approve" and "sent on my behalf" is the whole game. Let automation prepare freely; keep a hand on the trigger for anything that crosses the boundary out.
 
+### handoff-transit-outside-the-vault
+
+When work moves between several assistants or tools — one for research, another for drafting, a third for code — give that traffic its own transit directory *outside* the vault, staged so that an item's status is readable from its location, and let the vault take only the curated extract. The reason: a handoff payload is raw and disposable by nature — whole transcripts, half-formed prompts, one tool's output parked until another reads it — and the moment it lands inside the knowledge base it becomes indistinguishable from a considered note. Every later search, audit and reader then pays for material nobody meant to keep, and an abandoned handoff rots somewhere that looks like a source of truth. It is the same instinct as `one-source-of-truth`, applied to material that has no source-of-truth claim at all. Move the conclusions in; leave the conveyor belt out.
+
 ---
 
 ## Naming
