@@ -37,7 +37,7 @@ After install (see **Install** above): copy the starter pack into **your vault r
 
 ### Principles & opinionated starter
 
-Out of the box the auditor ships with an **opinionated starter rulebook** ([`plugins/vault-audit/rules.starter.yaml`](plugins/vault-audit/rules.starter.yaml) / [`rules.starter.md`](plugins/vault-audit/rules.starter.md)) — proven conventions, not a blank schema. The methodology behind them is in [**`plugins/vault-audit/PRINCIPLES.md`**](plugins/vault-audit/PRINCIPLES.md). And [**`plugins/vault-audit/behavior-layer.example.md`**](plugins/vault-audit/behavior-layer.example.md) is a coaching layer so your assistant reinforces the same principles in-session — load it by adding one line, `@behavior-layer.md`, to your `CLAUDE.md`, not through a SessionStart hook (hook stdout is capped and silently truncates a file this size; see the plugin README).
+Out of the box the auditor ships with an **opinionated starter rulebook** ([`plugins/vault-audit/rules.starter.yaml`](plugins/vault-audit/rules.starter.yaml) / [`rules.starter.md`](plugins/vault-audit/rules.starter.md)) — proven conventions, not a blank schema. The methodology behind them is in [**`plugins/vault-audit/PRINCIPLES.md`**](plugins/vault-audit/PRINCIPLES.md). And [**`plugins/vault-audit/behavior-layer.example.md`**](plugins/vault-audit/behavior-layer.example.md) is a coaching layer so your assistant reinforces the same principles in-session — load it by adding one line, `@behavior-layer.md`, to your `CLAUDE.md`, not through a SessionStart hook (hook output is capped — 10,000 characters per the Claude Code docs — and a layer that outgrows the cap stops arriving whole; see the plugin README).
 
 ### Requirements
 

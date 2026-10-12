@@ -2,7 +2,7 @@
 
 This file is injected verbatim into your assistant's context at the start of every session. It makes a small set of reflexes persistent, so the assistant reliably catches the same things every time.
 
-**To install it:** copy this file into your project as `behavior-layer.md` and add one line — `@behavior-layer.md` — to your `CLAUDE.md`. Not a SessionStart hook, which truncates it silently; see the README for why. Verbatim delivery is a requirement, not a preference — a half-delivered behavior layer looks installed and is not.
+**To install it:** copy this file into your project as `behavior-layer.md` and add one line — `@behavior-layer.md` — to your `CLAUDE.md`. Not a SessionStart hook that prints it, whose output is size-capped; see the README for why. Verbatim delivery is a requirement, not a preference — a half-delivered behavior layer looks installed and is not.
 
 These reflexes pair with `PRINCIPLES.md`: the principles document the method, and the reflexes coach those same principles in-the-moment — reinforced while you work, not only caught after the fact by an audit.
 

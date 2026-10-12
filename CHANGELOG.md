@@ -13,6 +13,36 @@ convention).
 
 ---
 
+## Unreleased — vault-audit (documentation corrections)
+
+**Corrections to published statements — documentation only, no behavior change.**
+
+### Fixed
+- **Withdrawn: the roughly-2 KB cap on hook output.** Since vault-audit
+  0.4.1 the root `README.md`, `plugins/vault-audit/README.md`,
+  `hooks.example.json`, `behavior-layer.example.md` and `PRINCIPLES.md` said that
+  hook output is silently truncated; the plugin README, `hooks.example.json` and
+  the 0.4.1 entry below put the figure at roughly 2 KB, and the 0.4.1 entry added
+  that a hook printing the behavior layer delivered only its first third.
+  That figure is not supported by the Claude Code documentation and is
+  withdrawn. The documentation gives the cap on a hook's output as 10,000
+  characters, and the example layer is below it. The 0.4.1 change itself
+  stands — the layer is still loaded with a `@behavior-layer.md` import — but
+  the cause given for it is withdrawn. What the docs do say, and the shipped
+  text now states: output over the cap is replaced by a file path and a preview
+  of up to the first 2,000 characters, and Claude Code does not ask the
+  assistant to read that file — so a layer that grows past 10,000 characters
+  would stop arriving whole.
+- **Withdrawn: the claim that `cd <path> && <cmd>` is evaluated as a whole.**
+  The plugin README said a compound command is matched as one string, so an
+  allow rule for the second command never matches it, and that it prompts again
+  for every directory you `cd` into. The Claude Code documentation says each
+  part of a compound command is checked separately, and a `cd` inside the
+  working directory is itself read-only. A `cd` outside the working directories
+  still asks for approval for that path, so that part of the old advice stands.
+  The "use absolute paths" habit is kept; the plugin README now gives the
+  documented reasons.
+
 ## vault-persona 0.1.0 — 2026-08-07
 
 **First release. Reworked before it shipped: the starters were unreachable.**
@@ -220,18 +250,18 @@ that died west of UTC, and a report the user never received.**
 
 ## vault-audit 0.4.1 — 2026-08-05
 
-**Fixes a documented install step that silently delivered a third of the behavior layer.**
+**Moves behavior-layer delivery from a SessionStart hook to an instructions-file import.**
+
+*(Stated cause corrected after release: this entry originally attributed the
+change to a hook-output cap measured at roughly 2 KB, under which users received
+about the first third of the layer. That figure is withdrawn — see Unreleased.)*
 
 ### Fixed
 - **Behavior-layer delivery.** Every documented route pointed at a SessionStart
-  hook that prints the file (`cat behavior-layer.md`). Hook stdout is capped —
-  truncation measured at roughly 2 KB — and the cut is silent and mid-file,
-  while `behavior-layer.example.md` is over 6 KB. Anyone following the
-  instructions received about the first third of their reflexes and no warning
-  that the rest was dropped: the worst available failure mode, because it looks
-  installed. The layer is now loaded from the instructions file the assistant
-  reads every session (one `@behavior-layer.md` line in `CLAUDE.md`), which is
-  verbatim and uncapped. Corrected in all four places that carried the old
+  hook that prints the file (`cat behavior-layer.md`). The layer is now loaded
+  from the instructions file the assistant reads every session (one
+  `@behavior-layer.md` line in `CLAUDE.md`), which loads it into context at
+  launch. Corrected in all four places that carried the old
   route — `hooks.example.json`, `plugins/vault-audit/README.md`, the root
   `README.md`, and the header of `behavior-layer.example.md` itself — plus a
   delivery clause in `PRINCIPLES.md`, since delivery is part of the design
